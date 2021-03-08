@@ -175,6 +175,8 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.analysis_bot_lim = False
         self.analysis_top_lim = False
         self.analysis_y_lim = False
+        self.sig_disp_bools = [[False, False], [False, False],
+                               [False, False], [False, False]]
         self.cnames = ['cornflowerblue', 'gold', 'springgreen', 'lightcoral']
         # Designate that dividing by zero will not generate an error
         np.seterr(divide='ignore', invalid='ignore')
@@ -221,7 +223,7 @@ class MainWindow(QWidget, Ui_MainWindow):
         # Update the axes
         self.update_analysis_win()
         # self.update_axes()
-        # Activate Properties Interface
+        # Enbable Properties Interface
         self.frame_rate_label.setEnabled(True)
         self.frame_rate_edit.setEnabled(True)
         self.image_scale_label.setEnabled(True)
@@ -229,6 +231,23 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.data_prop_button.setEnabled(True)
         self.image_type_label.setEnabled(True)
         self.image_type_drop.setEnabled(True)
+        # Enable signal coordinate tools and clear edit boxes
+        self.sig1_x_edit.setEnabled(True)
+        self.sig1_x_edit.setText('')
+        self.sig2_x_edit.setEnabled(True)
+        self.sig2_x_edit.setText('')
+        self.sig3_x_edit.setEnabled(True)
+        self.sig3_x_edit.setText('')
+        self.sig4_x_edit.setEnabled(True)
+        self.sig4_x_edit.setText('')
+        self.sig1_y_edit.setEnabled(True)
+        self.sig1_y_edit.setText('')
+        self.sig2_y_edit.setEnabled(True)
+        self.sig2_y_edit.setText('')
+        self.sig3_y_edit.setEnabled(True)
+        self.sig3_y_edit.setText('')
+        self.sig4_y_edit.setEnabled(True)
+        self.sig4_y_edit.setText('')
         # Disable Preparation Tools
         self.rm_bkgd_checkbox.setEnabled(False)
         self.rm_bkgd_method_label.setEnabled(False)
@@ -895,6 +914,13 @@ class MainWindow(QWidget, Ui_MainWindow):
         checkboxname = 'ensemble_cb_0{}'.format(self.signal_ind+1)
         checkbox = getattr(self, checkboxname)
         checkbox.setChecked(True)
+        # Populate the signal coordinate edit boxes
+        sigx_name = 'sig{}_x_edit'.format(self.signal_ind+1)
+        sigx = getattr(self, sigx_name)
+        sigx.setText(str(self.signal_coord[self.signal_ind][0]))
+        sigy_name = 'sig{}_y_edit'.format(self.signal_ind+1)
+        sigy = getattr(self, sigy_name)
+        sigy.setText(str(self.signal_coord[self.signal_ind][1]))
         # Update the index of the signal for next selection
         if self.signal_ind == 3:
             self.signal_ind = 0
