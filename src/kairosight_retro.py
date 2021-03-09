@@ -163,6 +163,14 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.movie_scroll_obj.valueChanged.connect(self.update_axes)
         self.play_movie_button.clicked.connect(self.play_movie)
         self.pause_button.clicked.connect(self.pause_movie)
+        self.sig1_x_edit.editingFinished.connect(self.signal_select_edit)
+        self.sig1_y_edit.editingFinished.connect(self.signal_select_edit)
+        self.sig2_x_edit.editingFinished.connect(self.signal_select_edit)
+        self.sig2_y_edit.editingFinished.connect(self.signal_select_edit)
+        self.sig3_x_edit.editingFinished.connect(self.signal_select_edit)
+        self.sig3_y_edit.editingFinished.connect(self.signal_select_edit)
+        self.sig4_x_edit.editingFinished.connect(self.signal_select_edit)
+        self.sig4_y_edit.editingFinished.connect(self.signal_select_edit)
         # Thread runner
         self.threadpool = QThreadPool()
         # Create a timer for regulating the movie while loop
@@ -205,7 +213,7 @@ class MainWindow(QWidget, Ui_MainWindow):
                             dtype=bool)
         # Reset the signal selection variables
         self.signal_ind = 0
-        self.signal_coord = np.zeros((4, 2))
+        self.signal_coord = np.zeros((4, 2)).astype(int)
         self.signal_toggle = np.zeros((4, 1))
         self.norm_flag = 0
         # Update the movie window tools with the appropriate values
@@ -232,21 +240,21 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.image_type_label.setEnabled(True)
         self.image_type_drop.setEnabled(True)
         # Enable signal coordinate tools and clear edit boxes
-        self.sig1_x_edit.setEnabled(True)
+        self.sig1_x_edit.setEnabled(False)
         self.sig1_x_edit.setText('')
-        self.sig2_x_edit.setEnabled(True)
+        self.sig2_x_edit.setEnabled(False)
         self.sig2_x_edit.setText('')
-        self.sig3_x_edit.setEnabled(True)
+        self.sig3_x_edit.setEnabled(False)
         self.sig3_x_edit.setText('')
-        self.sig4_x_edit.setEnabled(True)
+        self.sig4_x_edit.setEnabled(False)
         self.sig4_x_edit.setText('')
-        self.sig1_y_edit.setEnabled(True)
+        self.sig1_y_edit.setEnabled(False)
         self.sig1_y_edit.setText('')
-        self.sig2_y_edit.setEnabled(True)
+        self.sig2_y_edit.setEnabled(False)
         self.sig2_y_edit.setText('')
-        self.sig3_y_edit.setEnabled(True)
+        self.sig3_y_edit.setEnabled(False)
         self.sig3_y_edit.setText('')
-        self.sig4_y_edit.setEnabled(True)
+        self.sig4_y_edit.setEnabled(False)
         self.sig4_y_edit.setText('')
         # Disable Preparation Tools
         self.rm_bkgd_checkbox.setEnabled(False)
@@ -405,6 +413,18 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.axes_start_time_edit.setEnabled(True)
             self.axes_end_time_label.setEnabled(True)
             self.axes_end_time_edit.setEnabled(True)
+            # Activate axes signal selection edit boxes
+            axes_on = int(sum(self.signal_toggle)+1)
+            for cnt in np.arange(axes_on):
+                if cnt == 4:
+                    continue
+                else:
+                    xname = 'sig{}_x_edit'.format(cnt+1)
+                    x = getattr(self, xname)
+                    x.setEnabled(True)
+                    yname = 'sig{}_y_edit'.format(cnt+1)
+                    y = getattr(self, yname)
+                    y.setEnabled(True)
             # Disable Properties Tools
             self.frame_rate_label.setEnabled(False)
             self.frame_rate_edit.setEnabled(False)
@@ -463,6 +483,14 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.axes_start_time_edit.setEnabled(False)
             self.axes_end_time_label.setEnabled(False)
             self.axes_end_time_edit.setEnabled(False)
+            self.sig1_x_edit.setEnabled(False)
+            self.sig1_y_edit.setEnabled(False)
+            self.sig2_x_edit.setEnabled(False)
+            self.sig2_y_edit.setEnabled(False)
+            self.sig3_x_edit.setEnabled(False)
+            self.sig3_y_edit.setEnabled(False)
+            self.sig4_x_edit.setEnabled(False)
+            self.sig4_y_edit.setEnabled(False)
             # Activate Properties Tools
             self.frame_rate_label.setEnabled(True)
             self.frame_rate_edit.setEnabled(True)
@@ -803,6 +831,49 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.cid = self.mpl_canvas.mpl_connect(
             'button_press_event', self.on_click)
 
+    def signal_select_edit(self):
+        # Grab all of the values and make sure they are integer values
+        for n in np.arange(4):
+            # Create iteration names for the x and y structures
+            xname = 'sig{}_x_edit'.format(n+1)
+            x = getattr(self, xname)
+            yname = 'sig{}_y_edit'.format(n+1)
+            y = getattr(self, yname)
+            if x.text() == '' or y.text() == '':
+                continue
+            else:
+                # Grab the current string values and convert to integers
+                coord_ints = [int(x.text()), int(y.text())]
+                # print('Coordinates at assignment: {}'.format(coord_ints))
+                # Place the integer values in global signal coordinate variable
+                self.signal_coord[n] = coord_ints
+                # Convert integers back to strings and update the edit boxes
+                x.setText(str(coord_ints[0]))
+                y.setText(str(coord_ints[1]))
+                # Make sure the axes is toggled on for plotting
+                self.signal_toggle[n] = 1
+                # Make sure the APD Ensemble check box is enabled
+                cb_name = 'ensemble_cb_0{}'.format(n+1)
+                cb = getattr(self, cb_name)
+                cb.setChecked(True)
+        # Check to see if the next edit boxes should be toggled on
+        if sum(self.signal_toggle) < 4:
+            # Grab the number of active axes
+            act_ax = int(sum(self.signal_toggle))
+            # Activate the next set of edit boxes
+            xname = 'sig{}_x_edit'.format(act_ax+1)
+            x = getattr(self, xname)
+            x.setEnabled(True)
+            yname = 'sig{}_y_edit'.format(act_ax+1)
+            y = getattr(self, yname)
+            y.setEnabled(True)
+        # Update the select signal button index
+        self.signal_ind = int(sum(self.signal_toggle))
+        # print('Signal coordinates before plot function: {}'.format(
+        #    self.signal_coord))
+        # Update the axes
+        self.update_axes()
+
     def update_win(self):
         bot_val = float(self.axes_start_time_edit.text())
         top_val = float(self.axes_end_time_edit.text())
@@ -921,6 +992,17 @@ class MainWindow(QWidget, Ui_MainWindow):
         sigy_name = 'sig{}_y_edit'.format(self.signal_ind+1)
         sigy = getattr(self, sigy_name)
         sigy.setText(str(self.signal_coord[self.signal_ind][1]))
+        # Check to see if the next edit boxes should be toggled on
+        if sum(self.signal_toggle) < 4:
+            # Grab the number of active axes
+            act_ax = int(sum(self.signal_toggle))
+            # Activate the next set of edit boxes
+            xname = 'sig{}_x_edit'.format(act_ax+1)
+            x = getattr(self, xname)
+            x.setEnabled(True)
+            yname = 'sig{}_y_edit'.format(act_ax+1)
+            y = getattr(self, yname)
+            y.setEnabled(True)
         # Update the index of the signal for next selection
         if self.signal_ind == 3:
             self.signal_ind = 0
