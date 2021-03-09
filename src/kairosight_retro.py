@@ -6,9 +6,11 @@ import sys
 import traceback
 import time
 import math
+import cv2
 import numpy as np
 from pathlib import Path, PurePath
 from random import random
+from matplotlib.animation import FuncAnimation
 
 from util.preparation import (open_stack, reduce_stack, mask_generate,
                               mask_apply, img_as_uint, rescale)
@@ -163,6 +165,7 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.movie_scroll_obj.valueChanged.connect(self.update_axes)
         self.play_movie_button.clicked.connect(self.play_movie)
         self.pause_button.clicked.connect(self.pause_movie)
+        self.export_movie_button.clicked.connect(self.export_movie)
         # Thread runner
         self.threadpool = QThreadPool()
         # Create a timer for regulating the movie while loop
@@ -273,7 +276,7 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.signal_select_button.setEnabled(False)
         self.movie_scroll_obj.setEnabled(False)
         self.play_movie_button.setEnabled(False)
-        # self.export_movie_button.setEnabled(False)
+        self.export_movie_button.setEnabled(False)
         # self.optical_toggle_button.setEnabled(False)
         # Disable axes controls
         self.axes_start_time_label.setEnabled(False)
@@ -397,6 +400,7 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.data_prop_button.setText('Update Properties')
             # Update the axes
             self.update_axes()
+            print(f'Image DPI: {self.mpl_canvas.fig.dpi}')
         else:
             # Disable Preparation Tools
             self.rm_bkgd_checkbox.setEnabled(False)
@@ -437,7 +441,7 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.signal_select_button.setEnabled(False)
             self.movie_scroll_obj.setEnabled(False)
             self.play_movie_button.setEnabled(False)
-            # self.export_movie_button.setEnabled(False)
+            self.export_movie_button.setEnabled(False)
             # self.optical_toggle_button.setEnabled(False)
             # Disable axes controls
             self.axes_start_time_label.setEnabled(False)
@@ -552,7 +556,7 @@ class MainWindow(QWidget, Ui_MainWindow):
         if self.normalize_checkbox.isChecked():
             self.movie_scroll_obj.setEnabled(True)
             self.play_movie_button.setEnabled(True)
-            # self.export_movie_button.setEnabled(True)
+            self.export_movie_button.setEnabled(True)
             # self.optical_toggle_button.setEnabled(True)
 
     def analysis_select(self):
@@ -875,10 +879,28 @@ class MainWindow(QWidget, Ui_MainWindow):
     def movie_progress(self, n):
         # Update the scroll bar value, thereby updating the movie screen
         self.movie_scroll_obj.setValue(n)
+        # Return the movie screen
+        return self.mpl_canvas.fig
 
     # Function for pausing the movie once the play button has been hit
     def pause_movie(self):
         self.is_paused = True
+
+    # Export movie of ovelayed optical data
+    def export_movie(self):
+        '''# Set the scroll bar index back to the beginning
+        self.movie_scroll_obj.setValue(0)'''
+        # Open dialogue box for selecting the file name
+        save_fname = QFileDialog.getSaveFileName(
+            self, "Save File", os.getcwd(), "mp4 Files (*.mp4)")
+        print(f'Filename: {save_fname[0]}')
+        # The function for grabbing the video frames
+        animation = FuncAnimation(self.mpl_canvas.fig, self.movie_progress,
+                                  np.arange(0, self.data.shape[0], 5),
+                                  fargs=[], interval=self.data_fps)
+        # Execute the function
+        animation.save(save_fname[0],
+                       dpi=self.mpl_canvas.fig.dpi)
 
     # ASSIST (I.E., NON-BUTTON) FUNCTIONS
     # Function for grabbing the x and y coordinates of a button click
