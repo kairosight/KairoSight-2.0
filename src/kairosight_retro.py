@@ -844,7 +844,20 @@ class MainWindow(QWidget, Ui_MainWindow):
             else:
                 # Grab the current string values and convert to integers
                 coord_ints = [int(x.text()), int(y.text())]
-                # print('Coordinates at assignment: {}'.format(coord_ints))
+                print('X dimension: {}'.format(self.data.shape[2]))
+                print('Y dimension: {}'.format(self.data.shape[1]))
+                print('Coordinates: X = {} & Y = {}'.format(coord_ints[0], coord_ints[1]))
+                print(coord_ints[1] < 0)
+                print(coord_ints[1] >= self.data.shape[1])
+                # Check to make sure the coordinates are within range
+                if coord_ints[0] < 0 or coord_ints[0] >= self.data.shape[2]:
+                    self.sig_win_warn(2)
+                    x.setText(str(self.signal_coord[n][0]))
+                    break
+                elif coord_ints[1] < 0 or coord_ints[1] >= self.data.shape[1]:
+                    self.sig_win_warn(2)
+                    y.setText(str(self.signal_coord[n][1]))
+                    break
                 # Place the integer values in global signal coordinate variable
                 self.signal_coord[n] = coord_ints
                 # Convert integers back to strings and update the edit boxes
@@ -869,9 +882,8 @@ class MainWindow(QWidget, Ui_MainWindow):
             y.setEnabled(True)
         # Update the select signal button index
         self.signal_ind = int(sum(self.signal_toggle))
-        # print('Signal coordinates before plot function: {}'.format(
-        #    self.signal_coord))
         # Update the axes
+        print("We're there!")
         self.update_axes()
 
     def update_win(self):
@@ -1022,6 +1034,8 @@ class MainWindow(QWidget, Ui_MainWindow):
                     self.signal_time[-1]))
         elif ind == 1:
             msg.setText("The Start Time must be less than the End Time!")
+        elif ind == 2:
+            msg.setText("Entered signal coordinates outside image dimensions!")
         msg.setWindowTitle("Warning")
         msg.setStandardButtons(QMessageBox.Ok)
         msg.exec_()
