@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1272</width>
+    <width>1327</width>
     <height>835</height>
    </rect>
   </property>
@@ -312,7 +312,7 @@
      <rect>
       <x>190</x>
       <y>450</y>
-      <width>161</width>
+      <width>171</width>
       <height>271</height>
      </rect>
     </property>
@@ -763,7 +763,7 @@
          </item>
          <item>
           <property name="text">
-           <string>APD Batch</string>
+           <string>APD Ensemble</string>
           </property>
          </item>
         </widget>
@@ -993,81 +993,293 @@
      </item>
     </layout>
    </widget>
-   <widget class="QCheckBox" name="ensemble_cb_01">
-    <property name="enabled">
-     <bool>false</bool>
-    </property>
+   <widget class="QWidget" name="verticalLayoutWidget_8">
     <property name="geometry">
      <rect>
       <x>1230</x>
-      <y>80</y>
-      <width>20</width>
-      <height>13</height>
+      <y>40</y>
+      <width>74</width>
+      <height>73</height>
      </rect>
     </property>
-    <property name="text">
-     <string/>
-    </property>
-    <property name="checked">
-     <bool>false</bool>
-    </property>
+    <layout class="QVBoxLayout" name="sig1_coords_vl">
+     <item>
+      <layout class="QHBoxLayout" name="sig1_cb_hl">
+       <item>
+        <widget class="QLabel" name="ensemble_label_01">
+         <property name="text">
+          <string>APD-E:     </string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="ensemble_cb_01">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="sig1_x_hl">
+       <item>
+        <widget class="QLabel" name="sig1_x_label">
+         <property name="text">
+          <string>X:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="sig1_x_edit">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="sig1_y_hl">
+       <item>
+        <widget class="QLabel" name="sig1_y_label">
+         <property name="text">
+          <string>Y:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="sig1_y_edit">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
    </widget>
-   <widget class="QCheckBox" name="ensemble_cb_02">
-    <property name="enabled">
-     <bool>false</bool>
-    </property>
+   <widget class="QWidget" name="verticalLayoutWidget_9">
     <property name="geometry">
      <rect>
       <x>1230</x>
-      <y>230</y>
-      <width>20</width>
-      <height>13</height>
+      <y>190</y>
+      <width>74</width>
+      <height>80</height>
      </rect>
     </property>
-    <property name="text">
-     <string/>
-    </property>
-    <property name="checked">
-     <bool>false</bool>
-    </property>
+    <layout class="QVBoxLayout" name="sig2_coord_vl">
+     <item>
+      <layout class="QHBoxLayout" name="sig2_cb_hl">
+       <item>
+        <widget class="QLabel" name="label_4">
+         <property name="text">
+          <string>APD-E:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="ensemble_cb_02">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="sig2_x_hl">
+       <item>
+        <widget class="QLabel" name="sig2_x_label">
+         <property name="text">
+          <string>X:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="sig2_x_edit">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="sig2_y_hl">
+       <item>
+        <widget class="QLabel" name="sig2_y_label">
+         <property name="text">
+          <string>Y:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="sig2_y_edit">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
    </widget>
-   <widget class="QCheckBox" name="ensemble_cb_03">
-    <property name="enabled">
-     <bool>false</bool>
-    </property>
+   <widget class="QWidget" name="verticalLayoutWidget_10">
     <property name="geometry">
      <rect>
       <x>1230</x>
-      <y>390</y>
-      <width>20</width>
-      <height>13</height>
+      <y>350</y>
+      <width>74</width>
+      <height>80</height>
      </rect>
     </property>
-    <property name="text">
-     <string/>
-    </property>
-    <property name="checked">
-     <bool>false</bool>
-    </property>
+    <layout class="QVBoxLayout" name="sig3_coord_vl">
+     <item>
+      <layout class="QHBoxLayout" name="sig3_ensemble_hl">
+       <item>
+        <widget class="QLabel" name="ensemble_label_03">
+         <property name="text">
+          <string>APD-E:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="ensemble_cb_03">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="sig3_x_hl">
+       <item>
+        <widget class="QLabel" name="sig3_x_label">
+         <property name="text">
+          <string>X:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="sig3_x_edit">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="sig3_y_hl">
+       <item>
+        <widget class="QLabel" name="sig3_y_label">
+         <property name="text">
+          <string>Y:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="sig3_y_edit">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
    </widget>
-   <widget class="QCheckBox" name="ensemble_cb_04">
-    <property name="enabled">
-     <bool>false</bool>
-    </property>
+   <widget class="QWidget" name="verticalLayoutWidget_11">
     <property name="geometry">
      <rect>
       <x>1230</x>
-      <y>530</y>
-      <width>20</width>
-      <height>13</height>
+      <y>500</y>
+      <width>74</width>
+      <height>80</height>
      </rect>
     </property>
-    <property name="text">
-     <string/>
-    </property>
-    <property name="checked">
-     <bool>false</bool>
-    </property>
+    <layout class="QVBoxLayout" name="sig4_coord_vl">
+     <item>
+      <layout class="QHBoxLayout" name="sig4_ensemble_hl">
+       <item>
+        <widget class="QLabel" name="ensemble_label_04">
+         <property name="text">
+          <string>APD-E:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="ensemble_cb_04">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="sig4_x_hl">
+       <item>
+        <widget class="QLabel" name="sig4_x_label">
+         <property name="text">
+          <string>X:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="sig4_x_edit">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="sig4_y_hl">
+       <item>
+        <widget class="QLabel" name="sig4_y_label">
+         <property name="text">
+          <string>Y:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="sig4_y_edit">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
    </widget>
   </widget>
  </widget>
