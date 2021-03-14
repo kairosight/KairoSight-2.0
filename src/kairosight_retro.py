@@ -185,6 +185,7 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.analysis_y_lim = False
         self.sig_disp_bools = [[False, False], [False, False],
                                [False, False], [False, False]]
+        self.signal_emit_done = 1
         self.cnames = ['cornflowerblue', 'gold', 'springgreen', 'lightcoral']
         # Designate that dividing by zero will not generate an error
         np.seterr(divide='ignore', invalid='ignore')
@@ -832,59 +833,77 @@ class MainWindow(QWidget, Ui_MainWindow):
             'button_press_event', self.on_click)
 
     def signal_select_edit(self):
-        # Grab all of the values and make sure they are integer values
-        for n in np.arange(4):
-            # Create iteration names for the x and y structures
-            xname = 'sig{}_x_edit'.format(n+1)
-            x = getattr(self, xname)
-            yname = 'sig{}_y_edit'.format(n+1)
-            y = getattr(self, yname)
-            if x.text() == '' or y.text() == '':
-                continue
-            else:
-                # Grab the current string values and convert to integers
-                coord_ints = [int(x.text()), int(y.text())]
-                print('X dimension: {}'.format(self.data.shape[2]))
-                print('Y dimension: {}'.format(self.data.shape[1]))
-                print('Coordinates: X = {} & Y = {}'.format(coord_ints[0], coord_ints[1]))
-                print(coord_ints[1] < 0)
-                print(coord_ints[1] >= self.data.shape[1])
-                # Check to make sure the coordinates are within range
-                if coord_ints[0] < 0 or coord_ints[0] >= self.data.shape[2]:
-                    self.sig_win_warn(2)
-                    x.setText(str(self.signal_coord[n][0]))
-                    break
-                elif coord_ints[1] < 0 or coord_ints[1] >= self.data.shape[1]:
-                    self.sig_win_warn(2)
-                    y.setText(str(self.signal_coord[n][1]))
-                    break
-                # Place the integer values in global signal coordinate variable
-                self.signal_coord[n] = coord_ints
-                # Convert integers back to strings and update the edit boxes
-                x.setText(str(coord_ints[0]))
-                y.setText(str(coord_ints[1]))
-                # Make sure the axes is toggled on for plotting
-                self.signal_toggle[n] = 1
-                # Make sure the APD Ensemble check box is enabled
-                cb_name = 'ensemble_cb_0{}'.format(n+1)
-                cb = getattr(self, cb_name)
-                cb.setChecked(True)
-        # Check to see if the next edit boxes should be toggled on
-        if sum(self.signal_toggle) < 4:
-            # Grab the number of active axes
-            act_ax = int(sum(self.signal_toggle))
-            # Activate the next set of edit boxes
-            xname = 'sig{}_x_edit'.format(act_ax+1)
-            x = getattr(self, xname)
-            x.setEnabled(True)
-            yname = 'sig{}_y_edit'.format(act_ax+1)
-            y = getattr(self, yname)
-            y.setEnabled(True)
-        # Update the select signal button index
-        self.signal_ind = int(sum(self.signal_toggle))
-        # Update the axes
-        print("We're there!")
-        self.update_axes()
+        if self.signal_emit_done == 1:
+            # Update the tracker to negative (i.e., 0) and continue
+            self.signal_emit_done = 0
+            # Grab all of the values and make sure they are integer values
+            for n in np.arange(4):
+                # Create iteration names for the x and y structures
+                xname = 'sig{}_x_edit'.format(n+1)
+                x = getattr(self, xname)
+                yname = 'sig{}_y_edit'.format(n+1)
+                y = getattr(self, yname)
+                # Check to see if there is an empty edit box in the pair
+                if x.text() == '' or y.text() == '':
+                    continue
+                else:
+                    # Make sure the entered values are numeric
+                    try:
+                        new_x = int(x.text())
+                    except ValueError:
+                        self.sig_win_warn(3)
+                        x.setText(str(self.signal_coord[n][0]))
+                        self.signal_emit_done = 1
+                        break
+                    try:
+                        new_y = int(y.text())
+                    except ValueError:
+                        self.sig_win_warn(3)
+                        y.setText(str(self.signal_coord[n][1]))
+                        self.signal_emit_done = 1
+                        break
+                    # Grab the current string values and convert to integers
+                    coord_ints = [new_x, new_y]
+                    # Check to make sure the coordinates are within range
+                    if coord_ints[0] < 0 or (
+                            coord_ints[0] >= self.data.shape[2]):
+                        self.sig_win_warn(2)
+                        x.setText(str(self.signal_coord[n][0]))
+                        self.signal_emit_done = 1
+                        break
+                    elif coord_ints[1] < 0 or (
+                            coord_ints[1] >= self.data.shape[1]):
+                        self.sig_win_warn(2)
+                        y.setText(str(self.signal_coord[n][1]))
+                        self.signal_emit_done = 1
+                        break
+                    # Place integer values in global signal coordinate variable
+                    self.signal_coord[n] = coord_ints
+                    # Convert integers to strings and update the edit boxes
+                    x.setText(str(coord_ints[0]))
+                    y.setText(str(coord_ints[1]))
+                    # Make sure the axes is toggled on for plotting
+                    self.signal_toggle[n] = 1
+                    # Make sure the APD Ensemble check box is enabled
+                    cb_name = 'ensemble_cb_0{}'.format(n+1)
+                    cb = getattr(self, cb_name)
+                    cb.setChecked(True)
+                    # Check to see if the next edit boxes should be toggled on
+                    if sum(self.signal_toggle) < 4:
+                        # Grab the number of active axes
+                        act_ax = int(sum(self.signal_toggle))
+                        # Activate the next set of edit boxes
+                        xname = 'sig{}_x_edit'.format(act_ax+1)
+                        x = getattr(self, xname)
+                        x.setEnabled(True)
+                        yname = 'sig{}_y_edit'.format(act_ax+1)
+                        y = getattr(self, yname)
+                        y.setEnabled(True)
+                        # Update the select signal button index
+                        self.signal_ind = int(sum(self.signal_toggle))
+                    # Update the axes
+                    self.update_axes()
+                    self.signal_emit_done = 1
 
     def update_win(self):
         bot_val = float(self.axes_start_time_edit.text())
@@ -1036,6 +1055,8 @@ class MainWindow(QWidget, Ui_MainWindow):
             msg.setText("The Start Time must be less than the End Time!")
         elif ind == 2:
             msg.setText("Entered signal coordinates outside image dimensions!")
+        elif ind == 3:
+            msg.setText("Entered value must be numeric!")
         msg.setWindowTitle("Warning")
         msg.setStandardButtons(QMessageBox.Ok)
         msg.exec_()
@@ -1096,6 +1117,7 @@ class MainWindow(QWidget, Ui_MainWindow):
                     # Grab the min and max in the y-axis
                     y0 = np.min(data[start_i:end_i, ind[1], ind[0]])-0.05
                     y1 = np.max(data[start_i:end_i, ind[1], ind[0]])+0.05
+                    print (f'The upper and lower y limits are {y0} and {y1}, respectively.')
                     # Get the position of the movie frame
                     x = self.signal_time[self.movie_scroll_obj.value()]
                     # Overlay the frame location of the play feature
