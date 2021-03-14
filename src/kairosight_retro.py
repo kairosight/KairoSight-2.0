@@ -140,7 +140,16 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.movie_scroll_obj.valueChanged.connect(self.update_axes)
         self.play_movie_button.clicked.connect(self.play_movie)
         self.pause_button.clicked.connect(self.pause_movie)
+        self.sig1_x_edit.editingFinished.connect(self.signal_select_edit)
+        self.sig1_y_edit.editingFinished.connect(self.signal_select_edit)
+        self.sig2_x_edit.editingFinished.connect(self.signal_select_edit)
+        self.sig2_y_edit.editingFinished.connect(self.signal_select_edit)
+        self.sig3_x_edit.editingFinished.connect(self.signal_select_edit)
+        self.sig3_y_edit.editingFinished.connect(self.signal_select_edit)
+        self.sig4_x_edit.editingFinished.connect(self.signal_select_edit)
+        self.sig4_y_edit.editingFinished.connect(self.signal_select_edit)
         self.export_movie_button.clicked.connect(self.export_movie)
+
         # Thread runner
         self.threadpool = QThreadPool()
         # Create a timer for regulating the movie while loop
@@ -153,6 +162,9 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.analysis_bot_lim = False
         self.analysis_top_lim = False
         self.analysis_y_lim = False
+        self.sig_disp_bools = [[False, False], [False, False],
+                               [False, False], [False, False]]
+        self.signal_emit_done = 1
         self.cnames = ['cornflowerblue', 'gold', 'springgreen', 'lightcoral']
         # Designate that dividing by zero will not generate an error
         np.seterr(divide='ignore', invalid='ignore')
@@ -181,7 +193,7 @@ class MainWindow(QWidget, Ui_MainWindow):
                             dtype=bool)
         # Reset the signal selection variables
         self.signal_ind = 0
-        self.signal_coord = np.zeros((4, 2))
+        self.signal_coord = np.zeros((4, 2)).astype(int)
         self.signal_toggle = np.zeros((4, 1))
         self.norm_flag = 0
         # Update the movie window tools with the appropriate values
@@ -199,7 +211,7 @@ class MainWindow(QWidget, Ui_MainWindow):
         # Update the axes
         self.update_analysis_win()
         # self.update_axes()
-        # Activate Properties Interface
+        # Enbable Properties Interface
         self.frame_rate_label.setEnabled(True)
         self.frame_rate_edit.setEnabled(True)
         self.image_scale_label.setEnabled(True)
@@ -207,6 +219,23 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.data_prop_button.setEnabled(True)
         self.image_type_label.setEnabled(True)
         self.image_type_drop.setEnabled(True)
+        # Enable signal coordinate tools and clear edit boxes
+        self.sig1_x_edit.setEnabled(False)
+        self.sig1_x_edit.setText('')
+        self.sig2_x_edit.setEnabled(False)
+        self.sig2_x_edit.setText('')
+        self.sig3_x_edit.setEnabled(False)
+        self.sig3_x_edit.setText('')
+        self.sig4_x_edit.setEnabled(False)
+        self.sig4_x_edit.setText('')
+        self.sig1_y_edit.setEnabled(False)
+        self.sig1_y_edit.setText('')
+        self.sig2_y_edit.setEnabled(False)
+        self.sig2_y_edit.setText('')
+        self.sig3_y_edit.setEnabled(False)
+        self.sig3_y_edit.setText('')
+        self.sig4_y_edit.setEnabled(False)
+        self.sig4_y_edit.setText('')
         # Disable Preparation Tools
         self.rm_bkgd_checkbox.setEnabled(False)
         self.rm_bkgd_method_label.setEnabled(False)
@@ -361,6 +390,18 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.axes_start_time_edit.setEnabled(True)
             self.axes_end_time_label.setEnabled(True)
             self.axes_end_time_edit.setEnabled(True)
+            # Activate axes signal selection edit boxes
+            axes_on = int(sum(self.signal_toggle)+1)
+            for cnt in np.arange(axes_on):
+                if cnt == 4:
+                    continue
+                else:
+                    xname = 'sig{}_x_edit'.format(cnt+1)
+                    x = getattr(self, xname)
+                    x.setEnabled(True)
+                    yname = 'sig{}_y_edit'.format(cnt+1)
+                    y = getattr(self, yname)
+                    y.setEnabled(True)
             # Disable Properties Tools
             self.frame_rate_label.setEnabled(False)
             self.frame_rate_edit.setEnabled(False)
@@ -420,6 +461,14 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.axes_start_time_edit.setEnabled(False)
             self.axes_end_time_label.setEnabled(False)
             self.axes_end_time_edit.setEnabled(False)
+            self.sig1_x_edit.setEnabled(False)
+            self.sig1_y_edit.setEnabled(False)
+            self.sig2_x_edit.setEnabled(False)
+            self.sig2_y_edit.setEnabled(False)
+            self.sig3_x_edit.setEnabled(False)
+            self.sig3_y_edit.setEnabled(False)
+            self.sig4_x_edit.setEnabled(False)
+            self.sig4_y_edit.setEnabled(False)
             # Activate Properties Tools
             self.frame_rate_label.setEnabled(True)
             self.frame_rate_edit.setEnabled(True)
@@ -760,6 +809,79 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.cid = self.mpl_canvas.mpl_connect(
             'button_press_event', self.on_click)
 
+    def signal_select_edit(self):
+        if self.signal_emit_done == 1:
+            # Update the tracker to negative (i.e., 0) and continue
+            self.signal_emit_done = 0
+            # Grab all of the values and make sure they are integer values
+            for n in np.arange(4):
+                # Create iteration names for the x and y structures
+                xname = 'sig{}_x_edit'.format(n+1)
+                x = getattr(self, xname)
+                yname = 'sig{}_y_edit'.format(n+1)
+                y = getattr(self, yname)
+                # Check to see if there is an empty edit box in the pair
+                if x.text() == '' or y.text() == '':
+                    continue
+                else:
+                    # Make sure the entered values are numeric
+                    try:
+                        new_x = int(x.text())
+                    except ValueError:
+                        self.sig_win_warn(3)
+                        x.setText(str(self.signal_coord[n][0]))
+                        self.signal_emit_done = 1
+                        break
+                    try:
+                        new_y = int(y.text())
+                    except ValueError:
+                        self.sig_win_warn(3)
+                        y.setText(str(self.signal_coord[n][1]))
+                        self.signal_emit_done = 1
+                        break
+                    # Grab the current string values and convert to integers
+                    coord_ints = [new_x, new_y]
+                    # Check to make sure the coordinates are within range
+                    if coord_ints[0] < 0 or (
+                            coord_ints[0] >= self.data.shape[2]):
+                        self.sig_win_warn(2)
+                        x.setText(str(self.signal_coord[n][0]))
+                        self.signal_emit_done = 1
+                        break
+                    elif coord_ints[1] < 0 or (
+                            coord_ints[1] >= self.data.shape[1]):
+                        self.sig_win_warn(2)
+                        y.setText(str(self.signal_coord[n][1]))
+                        self.signal_emit_done = 1
+                        break
+                    # Place integer values in global signal coordinate variable
+                    self.signal_coord[n] = coord_ints
+                    # Convert integers to strings and update the edit boxes
+                    x.setText(str(coord_ints[0]))
+                    y.setText(str(coord_ints[1]))
+                    # Make sure the axes is toggled on for plotting
+                    self.signal_toggle[n] = 1
+                    # Make sure the APD Ensemble check box is enabled
+                    cb_name = 'ensemble_cb_0{}'.format(n+1)
+                    cb = getattr(self, cb_name)
+                    cb.setChecked(True)
+                    # Check to see if the next edit boxes should be toggled on
+                    if sum(self.signal_toggle) < 4:
+                        # Grab the number of active axes
+                        act_ax = int(sum(self.signal_toggle))
+                        # Activate the next set of edit boxes
+                        xname = 'sig{}_x_edit'.format(act_ax+1)
+                        x = getattr(self, xname)
+                        x.setEnabled(True)
+                        yname = 'sig{}_y_edit'.format(act_ax+1)
+                        y = getattr(self, yname)
+                        y.setEnabled(True)
+                        # Update the select signal button index
+                        self.signal_ind = int(sum(self.signal_toggle))
+                    # Update the axes
+                    self.update_axes()
+                    self.signal_emit_done = 1
+
     def update_win(self):
         bot_val = float(self.axes_start_time_edit.text())
         top_val = float(self.axes_end_time_edit.text())
@@ -888,6 +1010,24 @@ class MainWindow(QWidget, Ui_MainWindow):
         checkboxname = 'ensemble_cb_0{}'.format(self.signal_ind+1)
         checkbox = getattr(self, checkboxname)
         checkbox.setChecked(True)
+        # Populate the signal coordinate edit boxes
+        sigx_name = 'sig{}_x_edit'.format(self.signal_ind+1)
+        sigx = getattr(self, sigx_name)
+        sigx.setText(str(self.signal_coord[self.signal_ind][0]))
+        sigy_name = 'sig{}_y_edit'.format(self.signal_ind+1)
+        sigy = getattr(self, sigy_name)
+        sigy.setText(str(self.signal_coord[self.signal_ind][1]))
+        # Check to see if the next edit boxes should be toggled on
+        if sum(self.signal_toggle) < 4:
+            # Grab the number of active axes
+            act_ax = int(sum(self.signal_toggle))
+            # Activate the next set of edit boxes
+            xname = 'sig{}_x_edit'.format(act_ax+1)
+            x = getattr(self, xname)
+            x.setEnabled(True)
+            yname = 'sig{}_y_edit'.format(act_ax+1)
+            y = getattr(self, yname)
+            y.setEnabled(True)
         # Update the index of the signal for next selection
         if self.signal_ind == 3:
             self.signal_ind = 0
@@ -907,6 +1047,10 @@ class MainWindow(QWidget, Ui_MainWindow):
                     self.signal_time[-1]))
         elif ind == 1:
             msg.setText("The Start Time must be less than the End Time!")
+        elif ind == 2:
+            msg.setText("Entered signal coordinates outside image dimensions!")
+        elif ind == 3:
+            msg.setText("Entered value must be numeric!")
         msg.setWindowTitle("Warning")
         msg.setStandardButtons(QMessageBox.Ok)
         msg.exec_()
@@ -967,6 +1111,7 @@ class MainWindow(QWidget, Ui_MainWindow):
                     # Grab the min and max in the y-axis
                     y0 = np.min(data[start_i:end_i, ind[1], ind[0]])-0.05
                     y1 = np.max(data[start_i:end_i, ind[1], ind[0]])+0.05
+                    print (f'The upper and lower y limits are {y0} and {y1}, respectively.')
                     # Get the position of the movie frame
                     x = self.signal_time[self.movie_scroll_obj.value()]
                     # Overlay the frame location of the play feature
