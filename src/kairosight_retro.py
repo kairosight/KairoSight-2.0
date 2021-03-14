@@ -1,50 +1,27 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-import json
 import os
 import sys
 import traceback
 import time
-import math
 import numpy as np
-from pathlib import Path, PurePath
-from random import random
+from matplotlib.animation import FuncAnimation
 
-from util.preparation import (open_stack, reduce_stack, mask_generate,
-                              mask_apply, img_as_uint, rescale)
-from util.processing import (normalize_stack, filter_spatial, map_snr,
-                             find_tran_act, filter_spatial_stack,
-                             filter_temporal, invert_signal, filter_drift)
-from util.analysis import (calc_tran_duration, map_tran_analysis, DUR_MAX,
-                           calc_tran_activation, oap_peak_calc, diast_ind_calc,
+from util.preparation import (open_stack, mask_generate, mask_apply)
+from util.processing import (filter_spatial_stack, filter_temporal,
+                             filter_drift)
+from util.analysis import (calc_tran_activation, oap_peak_calc, diast_ind_calc,
                            act_ind_calc, apd_ind_calc, tau_calc,
                            ensemble_xlsx_print)
-        
-'from ui.KairoSight_WindowMDI import Ui_WindowMDI'
+
 from ui.KairoSight_WindowMain_Retro import Ui_MainWindow
-from PyQt5.QtCore import (QObject, pyqtSignal, Qt, QTimer, QRunnable,
+from PyQt5.QtCore import (QObject, pyqtSignal, QRunnable,
                           pyqtSlot, QThreadPool)
-from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, 
-                             QFileDialog, QListWidget, QMessageBox)
-from PyQt5.QtGui import QColor, QPalette
-import pyqtgraph as pg
+from PyQt5.QtWidgets import (QApplication, QWidget, QFileDialog, QMessageBox)
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt4agg import (
-    FigureCanvasQTAgg as FigureCanvas,
-    NavigationToolbar2QT as NavigationToolbar)
+    FigureCanvasQTAgg as FigureCanvas)
 import matplotlib.pyplot as plt
-import matplotlib.ticker as plticker
 import matplotlib.colors as colors
 import matplotlib.cm as cm
-import matplotlib.font_manager as fm
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
-import util.ScientificColourMaps5 as SCMaps
-from tests.intergration.test_Map import (fontsize3, fontsize4, marker1,
-                                         marker3, gray_heavy, color_snr,
-                                         cmap_snr, cmap_activation,
-                                         ACT_MAX_PIG_LV, ACT_MAX_PIG_WHOLE,
-                                         cmap_duration, add_map_colorbar_stats)
 
 
 class Stream(QObject):
@@ -171,6 +148,8 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.sig3_y_edit.editingFinished.connect(self.signal_select_edit)
         self.sig4_x_edit.editingFinished.connect(self.signal_select_edit)
         self.sig4_y_edit.editingFinished.connect(self.signal_select_edit)
+        self.export_movie_button.clicked.connect(self.export_movie)
+
         # Thread runner
         self.threadpool = QThreadPool()
         # Create a timer for regulating the movie while loop
@@ -301,7 +280,7 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.signal_select_button.setEnabled(False)
         self.movie_scroll_obj.setEnabled(False)
         self.play_movie_button.setEnabled(False)
-        # self.export_movie_button.setEnabled(False)
+        self.export_movie_button.setEnabled(False)
         # self.optical_toggle_button.setEnabled(False)
         # Disable axes controls
         self.axes_start_time_label.setEnabled(False)
@@ -363,9 +342,6 @@ class MainWindow(QWidget, Ui_MainWindow):
                 canvasname = 'mpl_canvas_sig{}'.format(n)
                 canvas = getattr(self, canvasname)
                 canvas.axes.set_xlim(self.signal_time[0], self.signal_time[-1])
-                '''print([self.signal_time[0], self.signal_time[-1]])
-                if n != len(self.signal_coord):
-                    canvas.axes.tick_params(labelbottom=False)'''
                 canvas.fig.tight_layout()
                 canvas.draw()
             # Activate Movie and Signal Tools
@@ -437,6 +413,7 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.data_prop_button.setText('Update Properties')
             # Update the axes
             self.update_axes()
+
         else:
             # Disable Preparation Tools
             self.rm_bkgd_checkbox.setEnabled(False)
@@ -477,7 +454,7 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.signal_select_button.setEnabled(False)
             self.movie_scroll_obj.setEnabled(False)
             self.play_movie_button.setEnabled(False)
-            # self.export_movie_button.setEnabled(False)
+            self.export_movie_button.setEnabled(False)
             # self.optical_toggle_button.setEnabled(False)
             # Disable axes controls
             self.axes_start_time_label.setEnabled(False)
@@ -600,7 +577,7 @@ class MainWindow(QWidget, Ui_MainWindow):
         if self.normalize_checkbox.isChecked():
             self.movie_scroll_obj.setEnabled(True)
             self.play_movie_button.setEnabled(True)
-            # self.export_movie_button.setEnabled(True)
+            self.export_movie_button.setEnabled(True)
             # self.optical_toggle_button.setEnabled(True)
 
     def analysis_select(self):
@@ -996,10 +973,27 @@ class MainWindow(QWidget, Ui_MainWindow):
     def movie_progress(self, n):
         # Update the scroll bar value, thereby updating the movie screen
         self.movie_scroll_obj.setValue(n)
+        # Return the movie screen
+        return self.mpl_canvas.fig
 
     # Function for pausing the movie once the play button has been hit
     def pause_movie(self):
         self.is_paused = True
+
+    # Export movie of ovelayed optical data
+    def export_movie(self):
+        '''# Set the scroll bar index back to the beginning
+        self.movie_scroll_obj.setValue(0)'''
+        # Open dialogue box for selecting the file name
+        save_fname = QFileDialog.getSaveFileName(
+            self, "Save File", os.getcwd(), "mp4 Files (*.mp4)")
+        # The function for grabbing the video frames
+        animation = FuncAnimation(self.mpl_canvas.fig, self.movie_progress,
+                                  np.arange(0, self.data.shape[0], 5),
+                                  fargs=[], interval=self.data_fps)
+        # Execute the function
+        animation.save(save_fname[0],
+                       dpi=self.mpl_canvas.fig.dpi)
 
     # ASSIST (I.E., NON-BUTTON) FUNCTIONS
     # Function for grabbing the x and y coordinates of a button click
