@@ -595,52 +595,18 @@ def filter_temporal(signal_in, sample_rate, mask, freq_cutoff=100.0,
     nyq_rate = sample_rate / 2.0
     n_order = 0
     if type(filter_order) is int:
-        # Preallocate space for the output
-        signal_out = np.zeros(signal_in.shape)
         # Calculate filter coefficients using Remez exchange algorithm
         b = remez(filter_order, [0.5, freq_cutoff, freq_cutoff*1.25,
                                  sample_rate/2.0], [1, 0], Hz=sample_rate)
         a = 1.0
-        # Apply the filter to the signal
-        for n in np.arange(0, signal_in.shape[1]):
-            for m in np.arange(0, signal_in.shape[2]):
-                if not mask[n, m]:
-                    signal_out[:, n, m] = filtfilt(b, a, signal_in[:, n, m])
-        # Good for ___, but ___
-        # Butterworth (from old code)
-        # Wn = freq_cutoff / nyq_rate
-        # n_order = filter_order
-        # [b, a] = butter(n_order, Wn)
-        # signal_out = filtfilt(b, a, signal_in)
-
-        # # FIR design arguements
-        # Fs = sample_rate           # sample-rate, down-sampled
-        # Norder = filter_order
-        # Ntaps = Norder + 1   # The desired number of taps in the filter
-        # Fpass = 95       # passband edge
-        # Fstop = 105     # stopband edge, transition band 100kHz
-        # Wp = Fpass/Fs    # pass normalized frequency
-        # Ws = Fstop/Fs    # stop normalized frequency
-        # taps = ffd.remez(Ntaps, [0, Wp, Ws, .5], [1, 0], maxiter=10000)
-        # # FIR design arguements
-        # Fpass = 100  # passband edge
-        # Fstop = 105  # stopband edge, transition band __ Hz
-        # R = 25  # how much to down sample by
-        # Fsr = Fs / 25.  # down-sampled sample rate
-        # xs = resample(signal_in, int(len(signal_in) / 25.))
-        # # Down sampled version, create new filter and plot spectrum
-        # R = 4.             # how much to down sample by
-        # Fsr = Fs/R          # down-sampled sample rate
-        # Wp = Fpass / Fsr  # pass normalized frequency
-        # Ws = Fstop / Fsr  # stop normalized frequency
-
-        # signal_filt = lfilter(taps, 1, signal_in)
-        # # signal_filt = filtfilt(taps, 1, signal_in, method="gust")
-        # # signal_filt = minimum_phase(signal_filt, method='hilbert')
-        # signal_out = signal_filt[Norder-1:]
-
-        # ############
-
+        # Reshape the data to 2D array with signals in the columns
+        data = np.reshape(signal_in, (signal_in.shape[0],
+                                      signal_in.shape[1]*signal_in.shape[2]))
+        # Apply the filter to all the data at once
+        data = filtfilt(b, a, data)
+        # Return data to original shape
+        signal_out = np.reshape(data, (signal_in.shape[0],
+                                       signal_in.shape[1], signal_in.shape[2]))
     elif filter_order == 'auto':
         # # FIR 4 design  -
         # https://www.programcreek.com/python/example/100540/scipy.signal.firwin
@@ -669,11 +635,6 @@ def filter_temporal(signal_in, sample_rate, mask, freq_cutoff=100.0,
     else:
         raise ValueError(
             'Filter order "{}" not implemented'.format(filter_order))
-
-    # # Calculate the phase delay of the filtered signal
-    # phase_delay = 0.5 * (filter_order - 1) / sample_rate
-    # delay = phase_delay * 1000
-
     return signal_out.astype(signal_in.dtype)
 
 
@@ -714,69 +675,6 @@ def filter_drift(signal_in, mask, drift_order=1):
                 signal_out[:, n, m] = signal_in[:, n, m]-drift_rm
     # Return the results
     return signal_out
-    '''
-    # Check parameters
-    if type(signal_in) is not np.ndarray:
-        raise TypeError('Signal data type must be an ndarray')
-    if signal_in.dtype not in [np.uint16, float]:
-        raise TypeError('Signal values type must either be uint16 or float')
-    if type(drift_order) not in [int, str]:
-        raise TypeError('Drift order must be a "exp" or an int')
-
-    if type(drift_order) is int:
-        if (drift_order < 1) or (drift_order > 5):
-            raise ValueError('Drift order must be "exp" or an "int" >= 1 and <= 5')
-    if type(drift_order) is str:
-        if drift_order != 'exp':
-            raise ValueError('Drift order "{}" not implemented'.format(drift_order))
-            
-    def func_exp(x, a, b, c):
-        return a * np.exp(-b * x) + c  # a decaying exponential curve to fit to
-
-    # TODO drift model must be fit to baseline data (pre & post transient)
-    drift_range = signal_in.max() - signal_in.min()
-    drift_out = np.zeros_like(signal_in)
-
-    if drift_range < 5:  # signal is too flat to remove drift
-        return signal_in, drift_out
-
-    drift_x = np.arange(start=0, stop=len(signal_in))
-    exp_b_estimates = (0.01, 0.1)  # assumed bounds of the B constant for a decaying exponential fit
-
-    if type(drift_order) is int:
-        # np.polyfit : Least squares polynomial fit
-        poly = np.poly1d(np.polyfit(drift_x, signal_in, drift_order))
-        poly_y = poly(drift_x)
-    else:
-        # scipy.optimize.curve_fit : Use non-linear least squares to fit a function, f, to data
-        exp_bounds_lower = [0, exp_b_estimates[0], signal_in.min()]
-        exp_bounds_upper = [drift_range * 2, exp_b_estimates[1], signal_in.max()]
-        try:
-            # popt, pcov = curve_fit(func_exp, drift_x, signal_in)
-            popt, pcov = curve_fit(func_exp, drift_x, signal_in, bounds=(exp_bounds_lower, exp_bounds_upper))
-        except Exception:
-            exctype, exvalue, traceback = sys.exc_info()
-            print("\t* Failed to calculate signal drift:\n\t" + str(exctype) + ' : ' + str(exvalue) +
-                  '\n\t\t' + str(traceback))
-            return signal_in, drift_out
-
-        poly_y = func_exp(drift_x, *popt)
-
-    # # linalg.lstsq : Computes a least-squares fit
-    # A = np.vstack([drift_x, np.ones(len(drift_x))]).T
-    # poly = np.poly1d(linalg.lstsq(A, signal_in)[0])
-    # poly_y = poly(drift_x)
-
-    # # scipy.interpolate.UnivariateSpline : Computes spline fits
-    # spl = UnivariateSpline(drift_x, signal_in)
-    # spl.set_smoothing_factor(2)
-    # poly_y = spl(drift_x)
-
-    signal_out = signal_in - poly_y + poly_y.min()
-    drift_out = poly_y
-
-    return signal_out.astype(signal_in.dtype), drift_out
-    '''
 
 
 def invert_signal(signal_in):
@@ -838,7 +736,8 @@ def invert_stack(stack_in):
     map_shape = stack_in.shape[1:]
     # Assign a value to each pixel
     for iy, ix in np.ndindex(map_shape):
-        print('\r\tInversion of Row:\t{}\t/ {}\tx\tCol:\t{}\t/ {}'.format(iy + 1, map_shape[0], ix + 1, map_shape[1]),
+        print('\r\tInversion of Row:\t{}\t/ {}\tx\tCol:\t{}\t/ {}'.format(
+            iy + 1, map_shape[0], ix + 1, map_shape[1]),
               end='', flush=True)
         pixel_data = stack_in[:, iy, ix]
         pixel_data_inv = invert_signal(pixel_data)
@@ -906,8 +805,6 @@ def normalize_stack(stack_in):
     map_shape = stack_in.shape[1:]
     # Assign a value to each pixel
     for iy, ix in np.ndindex(map_shape):
-        # print('\r\tNormalizing Row:\t{}\t/ {}\tx\tCol:\t{}\t/ {}'.format(iy + 1, map_shape[0], ix, map_shape[1]),
-        #       end='', flush=True)
         pixel_data = stack_in[:, iy, ix]
         pixel_data_norm = normalize_signal(pixel_data)
         stack_out[:, iy, ix] = pixel_data_norm

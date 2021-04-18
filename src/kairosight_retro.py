@@ -495,8 +495,20 @@ class MainWindow(QWidget, Ui_MainWindow):
         else:
             # Calcium transient, don't flip the data
             self.data_filt = self.data.astype(float)
+
+        # Temporal filter
+        if self.filter_checkbox.isChecked():
+            filter_timestart = time.process_time()
+            # Apply the low pass filter
+            self.data_filt = filter_temporal(
+                self.data_filt, self.data_fps, self.mask, filter_order=100)
+            filter_timeend = time.process_time()
+            print(
+                f'Filter Time: {filter_timeend-filter_timestart}')
+
         # Remove background
         if self.rm_bkgd_checkbox.isChecked():
+            rm_bkgd_timestart = time.process_time()
             # Grab the background removal inputs
             rm_method = self.rm_bkgd_method_drop.currentText()
             if rm_method == 'Otsu Global':
@@ -510,7 +522,13 @@ class MainWindow(QWidget, Ui_MainWindow):
                 self.data[0], rm_method, (rm_dark, rm_light))
             # Apply the mask for background removal
             self.data_filt = mask_apply(self.data_filt, self.mask)
+            rm_bkgd_timeend = time.process_time()
+            print(
+                f'Remove Background Time: {rm_bkgd_timeend-rm_bkgd_timestart}')
+
+        # Spatial filter
         if self.bin_checkbox.isChecked():
+            bin_timestart = time.process_time()
             # Grab the kernel size
             bin_kernel = self.bin_drop.currentText()
             if bin_kernel == '3x3':
@@ -523,17 +541,21 @@ class MainWindow(QWidget, Ui_MainWindow):
                 bin_kernel = 9
             # Execute spatial filter with selected kernel size
             self.data_filt = filter_spatial_stack(self.data_filt, bin_kernel)
-        if self.filter_checkbox.isChecked():
-            # Apply the low pass filter
-            self.data_filt = filter_temporal(
-                self.data_filt, self.data_fps, self.mask, filter_order=100)
+            bin_timeend = time.process_time()
+            print(
+                f'Binning Time: {bin_timeend-bin_timestart}')
+
+        # Drift Removal
         if self.drift_checkbox.isChecked():
             # Grab drift order from dropdown
             drift_order = self.drift_drop.currentIndex()+1
             # Apply drift removal
             self.data_filt = filter_drift(
                 self.data_filt, self.mask, drift_order)
+
+        # Normalization
         if self.normalize_checkbox.isChecked():
+            normalize_timestart = time.process_time()
             # Find index of the minimum of each signal
             data_min_ind = np.argmin(self.data_filt, axis=0)
             # Preallocate a variable for collecting minimum values
@@ -579,6 +601,9 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.play_movie_button.setEnabled(True)
             self.export_movie_button.setEnabled(True)
             # self.optical_toggle_button.setEnabled(True)
+        normalize_timeend = time.process_time()
+        print(
+                f'Normalize Time: {normalize_timeend-normalize_timestart}')
 
     def analysis_select(self):
         if self.analysis_drop.currentIndex() == 0:
@@ -1111,7 +1136,6 @@ class MainWindow(QWidget, Ui_MainWindow):
                     # Grab the min and max in the y-axis
                     y0 = np.min(data[start_i:end_i, ind[1], ind[0]])-0.05
                     y1 = np.max(data[start_i:end_i, ind[1], ind[0]])+0.05
-                    print (f'The upper and lower y limits are {y0} and {y1}, respectively.')
                     # Get the position of the movie frame
                     x = self.signal_time[self.movie_scroll_obj.value()]
                     # Overlay the frame location of the play feature
