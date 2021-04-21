@@ -128,6 +128,7 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.load_button.clicked.connect(self.load_data)
         self.refresh_button.clicked.connect(self.refresh_data)
         self.data_prop_button.clicked.connect(self.data_properties)
+        self.crop_cb.stateChanged.connect(self.crop_enable)
         self.signal_select_button.clicked.connect(self.signal_select)
         self.prep_button.clicked.connect(self.run_prep)
         self.analysis_drop.currentIndexChanged.connect(self.analysis_select)
@@ -149,6 +150,10 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.sig4_x_edit.editingFinished.connect(self.signal_select_edit)
         self.sig4_y_edit.editingFinished.connect(self.signal_select_edit)
         self.export_movie_button.clicked.connect(self.export_movie)
+        self.crop_xlower_edit.editingFinished.connect(self.crop_update)
+        self.crop_xupper_edit.editingFinished.connect(self.crop_update)
+        self.crop_ylower_edit.editingFinished.connect(self.crop_update)
+        self.crop_yupper_edit.editingFinished.connect(self.crop_update)
 
         # Thread runner
         self.threadpool = QThreadPool()
@@ -191,6 +196,7 @@ class MainWindow(QWidget, Ui_MainWindow):
         # Populate the mask variable
         self.mask = np.ones([self.data.shape[1], self.data.shape[2]],
                             dtype=bool)
+        print(f'Object dimensions: {self.data.shape[1]} & {self.data.shape[2]}')
         # Reset the signal selection variables
         self.signal_ind = 0
         self.signal_coord = np.zeros((4, 2)).astype(int)
@@ -219,6 +225,14 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.data_prop_button.setEnabled(True)
         self.image_type_label.setEnabled(True)
         self.image_type_drop.setEnabled(True)
+        self.crop_cb.setEnabled(True)
+        self.crop_cb.setChecked(False)
+        self.crop_xlower_edit.setText('0')
+        self.crop_xupper_edit.setText(str(self.data.shape[2]-1))
+        self.crop_xbound = [0, self.data.shape[2]-1]
+        self.crop_ylower_edit.setText('0')
+        self.crop_yupper_edit.setText(str(self.data.shape[1]-1))
+        self.crop_ybound = [0, self.data.shape[1]-1]
         # Enable signal coordinate tools and clear edit boxes
         self.sig1_x_edit.setEnabled(False)
         self.sig1_x_edit.setText('')
@@ -590,9 +604,13 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.data_filt = self.data_filt/data_diff
             # Set normalization flag
             self.norm_flag = 1
+            normalize_timeend = time.process_time()
+            print(
+                f'Normalize Time: {normalize_timeend-normalize_timestart}')
         else:
             # Reset normalization flag
             self.norm_flag = 0
+
         # Update axes
         self.update_axes()
         # Make the movie screen controls available if normalization occurred
@@ -601,9 +619,6 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.play_movie_button.setEnabled(True)
             self.export_movie_button.setEnabled(True)
             # self.optical_toggle_button.setEnabled(True)
-        normalize_timeend = time.process_time()
-        print(
-                f'Normalize Time: {normalize_timeend-normalize_timestart}')
 
     def analysis_select(self):
         if self.analysis_drop.currentIndex() == 0:
@@ -913,6 +928,7 @@ class MainWindow(QWidget, Ui_MainWindow):
         # Find the time index value to which the bot entry is closest
         bot_ind = abs(self.signal_time-bot_val)
         self.axes_start_ind = np.argmin(bot_ind)
+        print(f'Just set lower limit to {self.axes_start_ind}.')
         # Adjust the start time string accordingly
         self.axes_start_time_edit.setText(
             str(self.signal_time[self.axes_start_ind]))
@@ -1020,6 +1036,36 @@ class MainWindow(QWidget, Ui_MainWindow):
         animation.save(save_fname[0],
                        dpi=self.mpl_canvas.fig.dpi)
 
+    # Enable the crop limit boxes
+    def crop_enable(self):
+        if self.crop_cb.isChecked():
+            # Enable the labels and edit boxes for cropping
+            self.crop_xlabel.setEnabled(True)
+            self.crop_xlower_edit.setEnabled(True)
+            self.crop_xupper_edit.setEnabled(True)
+            self.crop_ylabel.setEnabled(True)
+            self.crop_ylower_edit.setEnabled(True)
+            self.crop_yupper_edit.setEnabled(True)
+            # Update the axes
+            self.update_axes()
+        else:
+            # Disable the labesl and edit boxes for cropping
+            self.crop_xlabel.setEnabled(False)
+            self.crop_xlower_edit.setEnabled(False)
+            self.crop_xupper_edit.setEnabled(False)
+            self.crop_ylabel.setEnabled(False)
+            self.crop_ylower_edit.setEnabled(False)
+            self.crop_yupper_edit.setEnabled(False)
+
+    def crop_update(self):
+        # Update the bounds of the crop box
+        self.crop_xbound = [int(self.crop_xlower_edit.text()),
+                            int(self.crop_xupper_edit.text())]
+        self.crop_ybound = [int(self.crop_ylower_edit.text()),
+                            int(self.crop_yupper_edit.text())]
+        # Update the image axis
+        self.update_axes()
+
     # ASSIST (I.E., NON-BUTTON) FUNCTIONS
     # Function for grabbing the x and y coordinates of a button click
     def on_click(self, event):
@@ -1082,6 +1128,7 @@ class MainWindow(QWidget, Ui_MainWindow):
 
     # Function for updating the axes
     def update_axes(self):
+        # UPDATE THE IMAGE AXIS
         # Determine if data is prepped or unprepped
         data = self.data_filt
         # UPDATE THE OPTICAL IMAGE AXIS
@@ -1111,9 +1158,31 @@ class MainWindow(QWidget, Ui_MainWindow):
             else:
                 self.mpl_canvas.axes.scatter(
                     ind[0], ind[1], color=self.cnames[cnt])
+        # Check to see if crop is being utilized
+        if self.crop_cb.isChecked():
+            if self.data_prop_button.text() == 'Start Preparation':
+                # Plot vertical sides of bounding box
+                '''self.mpl_canvas.axes.plot(
+                    [self.crop_xbound[0], self.crop_ybound[0]],
+                    [self.crop_xbound[0], self.crop_ybound[1]],
+                    color='orange')'''
+                self.mpl_canvas.axes.plot(
+                    [self.crop_ybound[0], self.crop_xbound[1]],
+                    [self.crop_ybound[1], self.crop_xbound[1]],
+                    color='orange')
+                # Plot horizontal sides of bounding box
+                '''self.mpl_canvas.axes.plot(
+                    [self.crop_xbound[0], self.crop_ybound[0]],
+                    [self.crop_xbound[1], self.crop_ybound[0]],
+                    color='orange')
+                self.mpl_canvas.axes.plot(
+                    [self.crop_xbound[0], self.crop_ybound[1]],
+                    [self.crop_xbound[1], self.crop_ybound[1]],
+                    color='orange')'''
         # Tighten the border on the figure
         self.mpl_canvas.fig.tight_layout()
         self.mpl_canvas.draw()
+
         # UPDATE THE SIGNAL AXES
         # Grab the start and end indices
         start_i = self.axes_start_ind
@@ -1131,22 +1200,39 @@ class MainWindow(QWidget, Ui_MainWindow):
                 canvas.axes.plot(self.signal_time[start_i:end_i],
                                  data[start_i:end_i, ind[1], ind[0]],
                                  color=self.cnames[cnt])
+                # Grab the min and max in the y-axis
+                print(f'Start Ind: {self.axes_start_ind}')
+                print(f'End Ind: {self.axes_end_ind}')
+                y0 = np.min(data[start_i:end_i, ind[1], ind[0]])-0.05
+                y1 = np.max(data[start_i:end_i, ind[1], ind[0]])+0.05
+                # Check for NAN values
+                if np.isnan(y0) or np.isnan(y1):
+                    y0 = -1.0
+                    y1 = 1.0
                 # Check to see if normalization has occurred
                 if self.normalize_checkbox.isChecked():
-                    # Grab the min and max in the y-axis
+                    '''# Grab the min and max in the y-axis
+                    print(f'Start Ind: {self.axes_start_ind}')
+                    print(f'End Ind: {self.axes_end_ind}')
                     y0 = np.min(data[start_i:end_i, ind[1], ind[0]])-0.05
                     y1 = np.max(data[start_i:end_i, ind[1], ind[0]])+0.05
+                    # Check for NAN values
+                    if np.isnan(y0) or np.isnan(y1):
+                        y0 = -1.0
+                        y1 = 1.0'''
                     # Get the position of the movie frame
                     x = self.signal_time[self.movie_scroll_obj.value()]
                     # Overlay the frame location of the play feature
                     canvas.axes.plot([x, x], [y0, y1], 'lime')
                     # Set the y-axis limits
+                    print(f'Lower Limit: {y0}')
+                    print(f'Upper Limit: {y1}')
                     canvas.axes.set_ylim(y0, y1)
-                    # Check to see if limits have been established for analysis
+                # Check to see if limits have been established for analysis
                 if self.analysis_bot_lim:
-                    # Grab the min and max in the y-axis
+                    '''# Grab the min and max in the y-axis
                     y0 = np.min(data[start_i:end_i, ind[1], ind[0]])-0.05
-                    y1 = np.max(data[start_i:end_i, ind[1], ind[0]])+0.05
+                    y1 = np.max(data[start_i:end_i, ind[1], ind[0]])+0.05'''
                     # Get the position of the lower limit marker
                     x = self.signal_time[self.anal_start_ind]
                     # Overlay the frame location of the play feature
@@ -1154,9 +1240,9 @@ class MainWindow(QWidget, Ui_MainWindow):
                     # Set the y-axis limits
                     canvas.axes.set_ylim(y0, y1)
                 if self.analysis_top_lim:
-                    # Grab the min and max in the y-axis
+                    '''# Grab the min and max in the y-axis
                     y0 = np.min(data[start_i:end_i, ind[1], ind[0]])-0.05
-                    y1 = np.max(data[start_i:end_i, ind[1], ind[0]])+0.05
+                    y1 = np.max(data[start_i:end_i, ind[1], ind[0]])+0.05'''
                     # Get the position of the lower limit marker
                     x = self.signal_time[self.anal_end_ind]
                     # Overlay the frame location of the play feature
