@@ -154,6 +154,8 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.crop_xupper_edit.editingFinished.connect(self.crop_update)
         self.crop_ylower_edit.editingFinished.connect(self.crop_update)
         self.crop_yupper_edit.editingFinished.connect(self.crop_update)
+        self.rm_bkgd_method_drop.currentIndexChanged.connect(
+            self.rm_bkgd_options)
 
         # Thread runner
         self.threadpool = QThreadPool()
@@ -196,8 +198,6 @@ class MainWindow(QWidget, Ui_MainWindow):
         # Populate the mask variable
         self.mask = np.ones([self.data.shape[1], self.data.shape[2]],
                             dtype=bool)
-        print(
-            f'Object dimensions: {self.data.shape[0]} x {self.data.shape[1]} x {self.data.shape[2]}')
         # Reset the signal selection variables
         self.signal_ind = 0
         self.signal_coord = np.zeros((4, 2)).astype(int)
@@ -365,10 +365,11 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.rm_bkgd_checkbox.setEnabled(True)
             self.rm_bkgd_method_label.setEnabled(True)
             self.rm_bkgd_method_drop.setEnabled(True)
-            self.bkgd_dark_label.setEnabled(True)
-            self.bkgd_dark_edit.setEnabled(True)
-            self.bkgd_light_label.setEnabled(True)
-            self.bkgd_light_edit.setEnabled(True)
+            if self.rm_bkgd_method_drop.currentIndex() == 2:
+                self.bkgd_dark_label.setEnabled(True)
+                self.bkgd_dark_edit.setEnabled(True)
+                self.bkgd_light_label.setEnabled(True)
+                self.bkgd_light_edit.setEnabled(True)
             self.bin_checkbox.setEnabled(True)
             self.bin_drop.setEnabled(True)
             self.filter_checkbox.setEnabled(True)
@@ -425,16 +426,12 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.image_type_label.setEnabled(False)
             self.image_type_drop.setEnabled(False)
             # Check for image crop
-            print(f'X Bounds: {self.crop_xbound[0]} x {self.crop_xbound[1]}')
-            print(f'Y Bounds: {self.crop_ybound[0]} x {self.crop_ybound[1]}')
             if self.crop_cb.isChecked():
-                print('Imma try!!!')
                 self.data = self.data[:,
                                       self.crop_ybound[0]:
                                           self.crop_ybound[1]+1,
                                       self.crop_xbound[0]:
                                           self.crop_xbound[1]+1]
-            print(f'Image size: {self.data.shape[0]} x {self.data.shape[1]} x {self.data.shape[2]}')
             # Change the button string
             self.data_prop_button.setText('Update Properties')
             # Update the axes
@@ -442,21 +439,29 @@ class MainWindow(QWidget, Ui_MainWindow):
 
         else:
             # Disable Preparation Tools
+            self.rm_bkgd_checkbox.setChecked(False)
             self.rm_bkgd_checkbox.setEnabled(False)
             self.rm_bkgd_method_label.setEnabled(False)
             self.rm_bkgd_method_drop.setEnabled(False)
+            self.rm_bkgd_method_drop.setCurrentIndex(0)
             self.bkgd_dark_label.setEnabled(False)
             self.bkgd_dark_edit.setEnabled(False)
             self.bkgd_light_label.setEnabled(False)
             self.bkgd_light_edit.setEnabled(False)
+            self.bin_checkbox.setChecked(False)
             self.bin_checkbox.setEnabled(False)
+            self.bin_drop.setCurrentIndex(0)
             self.bin_drop.setEnabled(False)
+            self.filter_checkbox.setChecked(False)
             self.filter_checkbox.setEnabled(False)
             self.filter_label_separator.setEnabled(False)
             self.filter_upper_label.setEnabled(False)
             self.filter_upper_edit.setEnabled(False)
+            self.drift_checkbox.setChecked(False)
             self.drift_checkbox.setEnabled(False)
+            self.drift_drop.setCurrentIndex(0)
             self.drift_drop.setEnabled(False)
+            self.normalize_checkbox.setChecked(False)
             self.normalize_checkbox.setEnabled(False)
             self.prep_button.setEnabled(False)
             # Disable Analysis Tools
@@ -495,6 +500,19 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.sig3_y_edit.setEnabled(False)
             self.sig4_x_edit.setEnabled(False)
             self.sig4_y_edit.setEnabled(False)
+            # Reset signal variables
+            self.signal_ind = 0
+            self.signal_coord = np.zeros((4, 2)).astype(int)
+            self.signal_toggle = np.zeros((4, 1))
+            self.norm_flag = 0
+            self.play_bool = 0
+            # Reset analysis tools
+            self.start_time_edit.setText('')
+            self.end_time_edit.setText('')
+            self.max_apd_edit.setText('')
+            self.perc_apd_edit.setText('')
+            self.axes_end_time_edit.setText('')
+            self.axes_start_time_edit.setText('')
             # Activate Properties Tools
             self.frame_rate_label.setEnabled(True)
             self.frame_rate_edit.setEnabled(True)
@@ -504,10 +522,11 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.image_type_drop.setEnabled(True)
             # Check for image crop
             if self.crop_cb.isChecked():
-                self.data_ = self.video_data_raw[0]
+                self.data = self.video_data_raw[0]
             # Change the button string
             self.data_prop_button.setText('Start Preparation')
             # Update the axes
+            self.update_analysis_win()
             self.update_axes()
 
     def run_prep(self):
@@ -1124,6 +1143,18 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Indicate function has ended
             self.signal_emit_done = 1
 
+    def rm_bkgd_options(self):
+        if self.rm_bkgd_method_drop.currentIndex() == 2:
+            self.bkgd_dark_label.setEnabled(True)
+            self.bkgd_dark_edit.setEnabled(True)
+            self.bkgd_light_label.setEnabled(True)
+            self.bkgd_light_edit.setEnabled(True)
+        else:
+            self.bkgd_dark_label.setEnabled(False)
+            self.bkgd_dark_edit.setEnabled(False)
+            self.bkgd_light_label.setEnabled(False)
+            self.bkgd_light_edit.setEnabled(False)
+
     # ASSIST (I.E., NON-BUTTON) FUNCTIONS
     # Function for grabbing the x and y coordinates of a button click
     def on_click(self, event):
@@ -1261,38 +1292,24 @@ class MainWindow(QWidget, Ui_MainWindow):
                                  data[start_i:end_i, ind[1], ind[0]],
                                  color=self.cnames[cnt])
                 # Grab the min and max in the y-axis
-                print(f'Start Ind: {self.axes_start_ind}')
-                print(f'End Ind: {self.axes_end_ind}')
                 y0 = np.min(data[start_i:end_i, ind[1], ind[0]])-0.05
                 y1 = np.max(data[start_i:end_i, ind[1], ind[0]])+0.05
                 # Check for NAN values
                 if np.isnan(y0) or np.isnan(y1):
                     y0 = -1.0
                     y1 = 1.0
+                # Set y-axis limits
+                canvas.axes.set_ylim(y0, y1)
                 # Check to see if normalization has occurred
                 if self.normalize_checkbox.isChecked():
-                    '''# Grab the min and max in the y-axis
-                    print(f'Start Ind: {self.axes_start_ind}')
-                    print(f'End Ind: {self.axes_end_ind}')
-                    y0 = np.min(data[start_i:end_i, ind[1], ind[0]])-0.05
-                    y1 = np.max(data[start_i:end_i, ind[1], ind[0]])+0.05
-                    # Check for NAN values
-                    if np.isnan(y0) or np.isnan(y1):
-                        y0 = -1.0
-                        y1 = 1.0'''
                     # Get the position of the movie frame
                     x = self.signal_time[self.movie_scroll_obj.value()]
                     # Overlay the frame location of the play feature
                     canvas.axes.plot([x, x], [y0, y1], 'lime')
                     # Set the y-axis limits
-                    print(f'Lower Limit: {y0}')
-                    print(f'Upper Limit: {y1}')
                     canvas.axes.set_ylim(y0, y1)
                 # Check to see if limits have been established for analysis
                 if self.analysis_bot_lim:
-                    '''# Grab the min and max in the y-axis
-                    y0 = np.min(data[start_i:end_i, ind[1], ind[0]])-0.05
-                    y1 = np.max(data[start_i:end_i, ind[1], ind[0]])+0.05'''
                     # Get the position of the lower limit marker
                     x = self.signal_time[self.anal_start_ind]
                     # Overlay the frame location of the play feature
@@ -1300,9 +1317,6 @@ class MainWindow(QWidget, Ui_MainWindow):
                     # Set the y-axis limits
                     canvas.axes.set_ylim(y0, y1)
                 if self.analysis_top_lim:
-                    '''# Grab the min and max in the y-axis
-                    y0 = np.min(data[start_i:end_i, ind[1], ind[0]])-0.05
-                    y1 = np.max(data[start_i:end_i, ind[1], ind[0]])+0.05'''
                     # Get the position of the lower limit marker
                     x = self.signal_time[self.anal_end_ind]
                     # Overlay the frame location of the play feature
@@ -1325,9 +1339,6 @@ class MainWindow(QWidget, Ui_MainWindow):
                 # Set the x-axis limits
                 canvas.axes.set_xlim(self.signal_time[start_i],
                                      self.signal_time[end_i-1])
-                # If normalized, set the y-axis limits and tick labels
-                if self.norm_flag == 1:
-                    canvas.axes.set_ylim(-0.3, 1)
                 # Tighten the layout
                 canvas.fig.tight_layout()
                 # Draw the figure
