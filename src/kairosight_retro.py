@@ -196,7 +196,8 @@ class MainWindow(QWidget, Ui_MainWindow):
         # Populate the mask variable
         self.mask = np.ones([self.data.shape[1], self.data.shape[2]],
                             dtype=bool)
-        print(f'Object dimensions: {self.data.shape[1]} & {self.data.shape[2]}')
+        print(
+            f'Object dimensions: {self.data.shape[0]} x {self.data.shape[1]} x {self.data.shape[2]}')
         # Reset the signal selection variables
         self.signal_ind = 0
         self.signal_coord = np.zeros((4, 2)).astype(int)
@@ -423,6 +424,17 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.image_scale_edit.setEnabled(False)
             self.image_type_label.setEnabled(False)
             self.image_type_drop.setEnabled(False)
+            # Check for image crop
+            print(f'X Bounds: {self.crop_xbound[0]} x {self.crop_xbound[1]}')
+            print(f'Y Bounds: {self.crop_ybound[0]} x {self.crop_ybound[1]}')
+            if self.crop_cb.isChecked():
+                print('Imma try!!!')
+                self.data = self.data[:,
+                                      self.crop_ybound[0]:
+                                          self.crop_ybound[1]+1,
+                                      self.crop_xbound[0]:
+                                          self.crop_xbound[1]+1]
+            print(f'Image size: {self.data.shape[0]} x {self.data.shape[1]} x {self.data.shape[2]}')
             # Change the button string
             self.data_prop_button.setText('Update Properties')
             # Update the axes
@@ -490,8 +502,13 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.image_scale_edit.setEnabled(True)
             self.image_type_label.setEnabled(True)
             self.image_type_drop.setEnabled(True)
+            # Check for image crop
+            if self.crop_cb.isChecked():
+                self.data_ = self.video_data_raw[0]
             # Change the button string
             self.data_prop_button.setText('Start Preparation')
+            # Update the axes
+            self.update_axes()
 
     def run_prep(self):
         # Pass the function to execute
@@ -610,7 +627,6 @@ class MainWindow(QWidget, Ui_MainWindow):
         else:
             # Reset normalization flag
             self.norm_flag = 0
-
         # Update axes
         self.update_axes()
         # Make the movie screen controls available if normalization occurred
@@ -1058,13 +1074,55 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.crop_yupper_edit.setEnabled(False)
 
     def crop_update(self):
-        # Update the bounds of the crop box
-        self.crop_xbound = [int(self.crop_xlower_edit.text()),
-                            int(self.crop_xupper_edit.text())]
-        self.crop_ybound = [int(self.crop_ylower_edit.text()),
-                            int(self.crop_yupper_edit.text())]
-        # Update the image axis
-        self.update_axes()
+        if self.signal_emit_done == 1:
+            # Create variable for stopping double tap
+            self.signal_emit_done = 0
+            # Check to make sure the x coordinates are within the image bounds
+            try:
+                new_x = [int(self.crop_xlower_edit.text()),
+                         int(self.crop_xupper_edit.text())]
+            except ValueError:
+                self.sig_win_warn(3)
+                self.crop_xlower_edit.setText(str(self.crop_xbound[0]))
+                self.crop_xupper_edit.setText(str(self.crop_xbound[1]))
+            else:
+                # Update the bounds of the crop box
+                if (new_x[0] < 0 or new_x[0] > self.data.shape[2] or
+                        new_x[1] < 0 or new_x[1] > self.data.shape[2]):
+                    self.sig_win_warn(2)
+                    self.crop_xlower_edit.setText(str(self.crop_xbound[0]))
+                    self.crop_xupper_edit.setText(str(self.crop_xbound[1]))
+                elif new_x[0] >= new_x[1]:
+                    self.sig_win_warn(4)
+                    self.crop_xlower_edit.setText(str(self.crop_xbound[0]))
+                    self.crop_xupper_edit.setText(str(self.crop_xbound[1]))
+                else:
+                    self.crop_xbound = [new_x[0], new_x[1]]
+            # Check to make sure the y coordinates are within the image bounds
+            try:
+                new_y = [int(self.crop_ylower_edit.text()),
+                         int(self.crop_yupper_edit.text())]
+            except ValueError:
+                self.sig_win_warn(3)
+                self.crop_ylower_edit.setText(str(self.crop_ybound[0]))
+                self.crop_yupper_edit.setText(str(self.crop_ybound[1]))
+            else:
+                # Update the bounds of the crop box
+                if (new_y[0] < 0 or new_y[0] > self.data.shape[1] or
+                        new_y[1] < 0 or new_y[1] > self.data.shape[1]):
+                    self.sig_win_warn(2)
+                    self.crop_ylower_edit.setText(str(self.crop_ybound[0]))
+                    self.crop_yupper_edit.setText(str(self.crop_ybound[1]))
+                elif new_y[0] >= new_y[1]:
+                    self.sig_win_warn(4)
+                    self.crop_ylower_edit.setText(str(self.crop_ybound[0]))
+                    self.crop_yupper_edit.setText(str(self.crop_ybound[1]))
+                else:
+                    self.crop_ybound = [new_y[0], new_y[1]]
+            # Update the image axis
+            self.update_axes()
+            # Indicate function has ended
+            self.signal_emit_done = 1
 
     # ASSIST (I.E., NON-BUTTON) FUNCTIONS
     # Function for grabbing the x and y coordinates of a button click
@@ -1119,9 +1177,11 @@ class MainWindow(QWidget, Ui_MainWindow):
         elif ind == 1:
             msg.setText("The Start Time must be less than the End Time!")
         elif ind == 2:
-            msg.setText("Entered signal coordinates outside image dimensions!")
+            msg.setText("Entered coordinates outside image dimensions!")
         elif ind == 3:
             msg.setText("Entered value must be numeric!")
+        elif ind == 4:
+            msg.setText("Lower limit must be less than upper limit!")
         msg.setWindowTitle("Warning")
         msg.setStandardButtons(QMessageBox.Ok)
         msg.exec_()
@@ -1162,23 +1222,23 @@ class MainWindow(QWidget, Ui_MainWindow):
         if self.crop_cb.isChecked():
             if self.data_prop_button.text() == 'Start Preparation':
                 # Plot vertical sides of bounding box
-                '''self.mpl_canvas.axes.plot(
-                    [self.crop_xbound[0], self.crop_ybound[0]],
-                    [self.crop_xbound[0], self.crop_ybound[1]],
-                    color='orange')'''
                 self.mpl_canvas.axes.plot(
-                    [self.crop_ybound[0], self.crop_xbound[1]],
-                    [self.crop_ybound[1], self.crop_xbound[1]],
+                    [self.crop_xbound[0], self.crop_xbound[0]],
+                    [self.crop_ybound[0], self.crop_ybound[1]],
+                    color='orange')
+                self.mpl_canvas.axes.plot(
+                    [self.crop_xbound[1], self.crop_xbound[1]],
+                    [self.crop_ybound[0], self.crop_ybound[1]],
                     color='orange')
                 # Plot horizontal sides of bounding box
-                '''self.mpl_canvas.axes.plot(
-                    [self.crop_xbound[0], self.crop_ybound[0]],
-                    [self.crop_xbound[1], self.crop_ybound[0]],
+                self.mpl_canvas.axes.plot(
+                    [self.crop_xbound[0], self.crop_xbound[1]],
+                    [self.crop_ybound[0], self.crop_ybound[0]],
                     color='orange')
                 self.mpl_canvas.axes.plot(
-                    [self.crop_xbound[0], self.crop_ybound[1]],
-                    [self.crop_xbound[1], self.crop_ybound[1]],
-                    color='orange')'''
+                    [self.crop_xbound[0], self.crop_xbound[1]],
+                    [self.crop_ybound[1], self.crop_ybound[1]],
+                    color='orange')
         # Tighten the border on the figure
         self.mpl_canvas.fig.tight_layout()
         self.mpl_canvas.draw()
