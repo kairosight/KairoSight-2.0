@@ -150,6 +150,8 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.sig4_x_edit.editingFinished.connect(self.signal_select_edit)
         self.sig4_y_edit.editingFinished.connect(self.signal_select_edit)
         self.export_movie_button.clicked.connect(self.export_movie)
+        self.rotate_ccw90_button.clicked.connect(self.rotate_image_ccw90)
+        self.rotate_cw90_button.clicked.connect(self.rotate_image_cw90)
         self.crop_xlower_edit.editingFinished.connect(self.crop_update)
         self.crop_xupper_edit.editingFinished.connect(self.crop_update)
         self.crop_ylower_edit.editingFinished.connect(self.crop_update)
@@ -172,6 +174,8 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.sig_disp_bools = [[False, False], [False, False],
                                [False, False], [False, False]]
         self.signal_emit_done = 1
+        self.rotate_tracker = 0
+        self.preparation_tracker = 0
         self.cnames = ['cornflowerblue', 'gold', 'springgreen', 'lightcoral']
         # Designate that dividing by zero will not generate an error
         np.seterr(divide='ignore', invalid='ignore')
@@ -226,6 +230,9 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.data_prop_button.setEnabled(True)
         self.image_type_label.setEnabled(True)
         self.image_type_drop.setEnabled(True)
+        self.rotate_label.setEnabled(True)
+        self.rotate_ccw90_button.setEnabled(True)
+        self.rotate_cw90_button.setEnabled(True)
         self.crop_cb.setEnabled(True)
         self.crop_cb.setChecked(False)
         self.crop_xlower_edit.setText('0')
@@ -425,6 +432,9 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.image_scale_edit.setEnabled(False)
             self.image_type_label.setEnabled(False)
             self.image_type_drop.setEnabled(False)
+            self.rotate_label.setEnabled(False)
+            self.rotate_ccw90_button.setEnabled(False)
+            self.rotate_cw90_button.setEnabled(False)
             # Check for image crop
             if self.crop_cb.isChecked():
                 self.data = self.data[:,
@@ -432,6 +442,8 @@ class MainWindow(QWidget, Ui_MainWindow):
                                           self.crop_ybound[1]+1,
                                       self.crop_xbound[0]:
                                           self.crop_xbound[1]+1]
+            # Update preparation tracker
+            self.preparation_tracker = 0
             # Change the button string
             self.data_prop_button.setText('Update Properties')
             # Update the axes
@@ -520,9 +532,16 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.image_scale_edit.setEnabled(True)
             self.image_type_label.setEnabled(True)
             self.image_type_drop.setEnabled(True)
+            self.rotate_label.setEnabled(True)
+            self.rotate_ccw90_button.setEnabled(True)
+            self.rotate_cw90_button.setEnabled(True)
             # Check for image crop
             if self.crop_cb.isChecked():
                 self.data = self.video_data_raw[0]
+            if self.rotate_tracker != 0:
+                self.data = np.rot90(self.data,
+                                     k=self.rotate_tracker,
+                                     axes=(1, 2))
             # Change the button string
             self.data_prop_button.setText('Start Preparation')
             # Update the axes
@@ -646,6 +665,8 @@ class MainWindow(QWidget, Ui_MainWindow):
         else:
             # Reset normalization flag
             self.norm_flag = 0
+        # Update preparation tracker
+        self.preparation_tracker = 1
         # Update axes
         self.update_axes()
         # Make the movie screen controls available if normalization occurred
@@ -1071,6 +1092,30 @@ class MainWindow(QWidget, Ui_MainWindow):
         animation.save(save_fname[0],
                        dpi=self.mpl_canvas.fig.dpi)
 
+    # Rotate image 90 degrees counterclockwise function
+    def rotate_image_ccw90(self):
+        # Rotate the data 90 degress counterclockwise
+        self.data = np.rot90(self.data, k=1, axes=(1, 2))
+        # Update variable for tracking rotation
+        if self.rotate_tracker < 3:
+            self.rotate_tracker += 1
+        else:
+            self.rotate_tracker = 0
+        # Update cropping strings according to new image dimensions
+        self.crop_update()
+
+    # Rotate image 90 degress clockwise function
+    def rotate_image_cw90(self):
+        # Rotate the data 90 degress clockwise
+        self.data = np.rot90(self.data, k=-1, axes=(1, 2))
+        # Update variable for tracking rotation
+        if self.rotate_tracker == 0:
+            self.rotate_tracker = 3
+        else:
+            self.rotate_tracker -= 1
+        # Update cropping strings according to new image dimensions
+        self.crop_update()
+
     # Enable the crop limit boxes
     def crop_enable(self):
         if self.crop_cb.isChecked():
@@ -1221,7 +1266,10 @@ class MainWindow(QWidget, Ui_MainWindow):
     def update_axes(self):
         # UPDATE THE IMAGE AXIS
         # Determine if data is prepped or unprepped
-        data = self.data_filt
+        if self.preparation_tracker == 0:
+            data = self.data
+        else:
+            data = self.data_filt
         # UPDATE THE OPTICAL IMAGE AXIS
         # Clear axis for update
         self.mpl_canvas.axes.cla()

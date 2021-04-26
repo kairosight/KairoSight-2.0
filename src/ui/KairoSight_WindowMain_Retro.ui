@@ -68,7 +68,7 @@
       <x>10</x>
       <y>450</y>
       <width>171</width>
-      <height>212</height>
+      <height>243</height>
      </rect>
     </property>
     <layout class="QVBoxLayout" name="image_properties_vl">
@@ -169,7 +169,44 @@
       </layout>
      </item>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_5">
+      <layout class="QHBoxLayout" name="rotate_hl">
+       <item>
+        <widget class="QLabel" name="rotate_label">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="text">
+          <string>Rotate:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="rotate_ccw90_button">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="whatsThis">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>90 CCW</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="rotate_cw90_button">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="text">
+          <string>90 CW</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="crop_label_hl">
        <item>
         <widget class="QCheckBox" name="crop_cb">
          <property name="enabled">
@@ -183,7 +220,7 @@
       </layout>
      </item>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_6">
+      <layout class="QHBoxLayout" name="crop_x_hl">
        <item>
         <spacer name="horizontalSpacer">
          <property name="orientation">
@@ -245,7 +282,7 @@
       </layout>
      </item>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_7">
+      <layout class="QHBoxLayout" name="crop_y_hl">
        <item>
         <spacer name="horizontalSpacer_9">
          <property name="orientation">
@@ -430,7 +467,7 @@
    <widget class="QWidget" name="verticalLayoutWidget_6">
     <property name="geometry">
      <rect>
-      <x>190</x>
+      <x>200</x>
       <y>450</y>
       <width>181</width>
       <height>271</height>
@@ -837,7 +874,7 @@
    <widget class="QWidget" name="verticalLayoutWidget_7">
     <property name="geometry">
      <rect>
-      <x>380</x>
+      <x>400</x>
       <y>450</y>
       <width>111</width>
       <height>215</height>
