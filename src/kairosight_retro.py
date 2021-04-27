@@ -437,11 +437,12 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.rotate_cw90_button.setEnabled(False)
             # Check for image crop
             if self.crop_cb.isChecked():
-                self.data = self.data[:,
-                                      self.crop_ybound[0]:
-                                          self.crop_ybound[1]+1,
-                                      self.crop_xbound[0]:
-                                          self.crop_xbound[1]+1]
+                self.data_filt = self.data_filt[:, self.crop_ybound[0]:self.crop_ybound[1]+1, self.crop_xbound[0]:self.crop_xbound[1]+1]
+            self.crop_cb.setEnabled(False)
+            self.crop_xlower_edit.setEnabled(False)
+            self.crop_xupper_edit.setEnabled(False)
+            self.crop_ylower_edit.setEnabled(False)
+            self.crop_yupper_edit.setEnabled(False)
             # Update preparation tracker
             self.preparation_tracker = 0
             # Change the button string
@@ -542,6 +543,11 @@ class MainWindow(QWidget, Ui_MainWindow):
                 self.data = np.rot90(self.data,
                                      k=self.rotate_tracker,
                                      axes=(1, 2))
+            self.crop_cb.setEnabled(True)
+            self.crop_xlower_edit.setEnabled(True)
+            self.crop_xupper_edit.setEnabled(True)
+            self.crop_ylower_edit.setEnabled(True)
+            self.crop_yupper_edit.setEnabled(True)
             # Change the button string
             self.data_prop_button.setText('Start Preparation')
             # Update the axes
@@ -557,13 +563,13 @@ class MainWindow(QWidget, Ui_MainWindow):
     def prep_data(self, progress_callback):
         # Designate that dividing by zero will not generate an error
         np.seterr(divide='ignore', invalid='ignore')
-        # Grab unprepped data and check data type to flip if necessary
+        '''# Grab unprepped data and check data type to flip if necessary
         if self.image_type_drop.currentIndex() == 0:
             # Membrane potential, flip the data
             self.data_filt = self.data.astype(float)*-1
         else:
             # Calcium transient, don't flip the data
-            self.data_filt = self.data.astype(float)
+            self.data_filt = self.data.astype(float)'''
 
         # Temporal filter
         if self.filter_checkbox.isChecked():
@@ -588,7 +594,7 @@ class MainWindow(QWidget, Ui_MainWindow):
             rm_light = int(self.bkgd_light_edit.text())
             # Generate the mask for background removal using original data
             frame_out, self.mask, markers = mask_generate(
-                self.data[0], rm_method, (rm_dark, rm_light))
+                self.data_filt[0], rm_method, (rm_dark, rm_light))
             # Apply the mask for background removal
             self.data_filt = mask_apply(self.data_filt, self.mask)
             rm_bkgd_timeend = time.process_time()
@@ -906,6 +912,8 @@ class MainWindow(QWidget, Ui_MainWindow):
             'button_press_event', self.on_click)
 
     def signal_select_edit(self):
+        print("I want to work!")
+        print(f'signal_emit_done: {self.signal_emit_done}')
         if self.signal_emit_done == 1:
             # Update the tracker to negative (i.e., 0) and continue
             self.signal_emit_done = 0
@@ -974,9 +982,9 @@ class MainWindow(QWidget, Ui_MainWindow):
                         y.setEnabled(True)
                         # Update the select signal button index
                         self.signal_ind = int(sum(self.signal_toggle))
-                    # Update the axes
-                    self.update_axes()
-                    self.signal_emit_done = 1
+            # Update the axes
+            self.update_axes()
+            self.signal_emit_done = 1
 
     def update_win(self):
         bot_val = float(self.axes_start_time_edit.text())
@@ -1101,6 +1109,8 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.rotate_tracker += 1
         else:
             self.rotate_tracker = 0
+        # Swap crop box values
+        self.crop_bound_rot()
         # Update cropping strings according to new image dimensions
         self.crop_update()
 
@@ -1113,8 +1123,24 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.rotate_tracker = 3
         else:
             self.rotate_tracker -= 1
+        # Swap crop box values
+        self.crop_bound_rot()
         # Update cropping strings according to new image dimensions
         self.crop_update()
+
+    # Rotate cropping bounding box
+    def crop_bound_rot(self):
+        # Grab the current values
+        new_x = [int(self.crop_ylower_edit.text()),
+                 int(self.crop_yupper_edit.text())]
+        new_y = [int(self.crop_xlower_edit.text()),
+                 int(self.crop_xupper_edit.text())]
+        # Replace x values
+        self.crop_xlower_edit.setText(str(new_x[0]))
+        self.crop_xupper_edit.setText(str(new_x[1]))
+        # Replace y values
+        self.crop_ylower_edit.setText(str(new_y[0]))
+        self.crop_yupper_edit.setText(str(new_y[1]))
 
     # Enable the crop limit boxes
     def crop_enable(self):
@@ -1266,7 +1292,7 @@ class MainWindow(QWidget, Ui_MainWindow):
     def update_axes(self):
         # UPDATE THE IMAGE AXIS
         # Determine if data is prepped or unprepped
-        if self.preparation_tracker == 0:
+        if self.data_prop_button.text() == 'Start Preparation':
             data = self.data
         else:
             data = self.data_filt
@@ -1274,7 +1300,13 @@ class MainWindow(QWidget, Ui_MainWindow):
         # Clear axis for update
         self.mpl_canvas.axes.cla()
         # Update the UI with an image off the top of the stack
-        self.mpl_canvas.axes.imshow(self.data[0], cmap='gray')
+        if self.data_prop_button.text() == 'Start Preparation':
+            self.mpl_canvas.axes.imshow(data[0], cmap='gray')
+        else:
+            if self.image_type_drop.currentIndex() == 0:
+                self.mpl_canvas.axes.imshow(data[0]*-1, cmap='gray')
+            else:
+                self.mpl_canvas.axes.imshow(data[0], cmap='gray')
         # Match the matplotlib figure background color to the GUI
         self.mpl_canvas.fig.patch.set_facecolor(self.bkgd_color)
         # If normalized, overlay the potential values
