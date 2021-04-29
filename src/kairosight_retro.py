@@ -196,6 +196,8 @@ class MainWindow(QWidget, Ui_MainWindow):
             source=(self.file_path + "/" + self.file_name))
         # Extract the optical data from the stack
         self.data = self.video_data_raw[0]
+        self.data_prop = self.data
+        self.im_bkgd = self.data[0]
         # Populate the axes start and end indices
         self.axes_start_ind = 0
         self.axes_end_ind = self.data.shape[0]-1
@@ -348,10 +350,10 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Check data type and flip if necessary
             if self.image_type_drop.currentIndex() == 0:
                 # Membrane potential, flip the data
-                self.data_filt = self.data.astype(float)*-1
+                self.data_prop = self.data.astype(float)*-1
             else:
                 # Calcium transient, don't flip the data
-                self.data_filt = self.data.astype(float)
+                self.data_prop = self.data.astype(float)
             # Create time vector
             self.signal_time = np.arange(self.data.shape[0])*1/self.data_fps
             # Populate the axes start and end edit boxes
@@ -437,7 +439,15 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.rotate_cw90_button.setEnabled(False)
             # Check for image crop
             if self.crop_cb.isChecked():
-                self.data_filt = self.data_filt[:, self.crop_ybound[0]:self.crop_ybound[1]+1, self.crop_xbound[0]:self.crop_xbound[1]+1]
+                self.data_prop = self.data_prop[:,
+                                                self.crop_ybound[0]:
+                                                    self.crop_ybound[1]+1,
+                                                self.crop_xbound[0]:
+                                                    self.crop_xbound[1]+1]
+                self.im_bkgd = self.im_bkgd[self.crop_ybound[0]:
+                                            self.crop_ybound[1]+1,
+                                            self.crop_xbound[0]:
+                                            self.crop_xbound[1]+1]
             self.crop_cb.setEnabled(False)
             self.crop_xlower_edit.setEnabled(False)
             self.crop_xupper_edit.setEnabled(False)
@@ -543,6 +553,9 @@ class MainWindow(QWidget, Ui_MainWindow):
                 self.data = np.rot90(self.data,
                                      k=self.rotate_tracker,
                                      axes=(1, 2))
+                self.im_bkgd = np.rot90(self.im_bkgd,
+                                        k=self.rotate_tracker,
+                                        axes=(1, 2))
             self.crop_cb.setEnabled(True)
             self.crop_xlower_edit.setEnabled(True)
             self.crop_xupper_edit.setEnabled(True)
@@ -563,8 +576,9 @@ class MainWindow(QWidget, Ui_MainWindow):
     def prep_data(self, progress_callback):
         # Designate that dividing by zero will not generate an error
         np.seterr(divide='ignore', invalid='ignore')
-        '''# Grab unprepped data and check data type to flip if necessary
-        if self.image_type_drop.currentIndex() == 0:
+        # Grab unprepped data and check data type to flip if necessary
+        self.data_filt = self.data_prop
+        '''if self.image_type_drop.currentIndex() == 0:
             # Membrane potential, flip the data
             self.data_filt = self.data.astype(float)*-1
         else:
@@ -1104,6 +1118,8 @@ class MainWindow(QWidget, Ui_MainWindow):
     def rotate_image_ccw90(self):
         # Rotate the data 90 degress counterclockwise
         self.data = np.rot90(self.data, k=1, axes=(1, 2))
+        # Rotate the bacground image 90 degrees counterclockwise
+        self.im_bkgd = np.rot90(self.im_bkgd, k=1)
         # Update variable for tracking rotation
         if self.rotate_tracker < 3:
             self.rotate_tracker += 1
@@ -1118,6 +1134,8 @@ class MainWindow(QWidget, Ui_MainWindow):
     def rotate_image_cw90(self):
         # Rotate the data 90 degress clockwise
         self.data = np.rot90(self.data, k=-1, axes=(1, 2))
+        # Rotate the bacground image 90 degrees clockwise
+        self.im_bkgd = np.rot90(self.im_bkgd, k=-1)
         # Update variable for tracking rotation
         if self.rotate_tracker == 0:
             self.rotate_tracker = 3
@@ -1292,21 +1310,15 @@ class MainWindow(QWidget, Ui_MainWindow):
     def update_axes(self):
         # UPDATE THE IMAGE AXIS
         # Determine if data is prepped or unprepped
-        if self.data_prop_button.text() == 'Start Preparation':
-            data = self.data
+        if self.preparation_tracker == 0:
+            data = self.data_prop
         else:
             data = self.data_filt
         # UPDATE THE OPTICAL IMAGE AXIS
         # Clear axis for update
         self.mpl_canvas.axes.cla()
         # Update the UI with an image off the top of the stack
-        if self.data_prop_button.text() == 'Start Preparation':
-            self.mpl_canvas.axes.imshow(data[0], cmap='gray')
-        else:
-            if self.image_type_drop.currentIndex() == 0:
-                self.mpl_canvas.axes.imshow(data[0]*-1, cmap='gray')
-            else:
-                self.mpl_canvas.axes.imshow(data[0], cmap='gray')
+        self.mpl_canvas.axes.imshow(self.im_bkgd, cmap='gray')
         # Match the matplotlib figure background color to the GUI
         self.mpl_canvas.fig.patch.set_facecolor(self.bkgd_color)
         # If normalized, overlay the potential values

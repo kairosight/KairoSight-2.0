@@ -298,7 +298,8 @@ def mask_generate(frame_in, mask_type='Otsu_global', strict=(3, 5)):
     if mask_type == 'Otsu_global':
         # Good for ___, but ___
         global_otsu = threshold_otsu(frame_in)
-        binary_global = frame_in <= global_otsu
+        print(f'Global Otsu: {global_otsu}')
+        binary_global = frame_in >= global_otsu
         mask = binary_global
         frame_out[mask] = 0
 
