@@ -927,8 +927,6 @@ class MainWindow(QWidget, Ui_MainWindow):
             'button_press_event', self.on_click)
 
     def signal_select_edit(self):
-        print("I want to work!")
-        print(f'signal_emit_done: {self.signal_emit_done}')
         if self.signal_emit_done == 1:
             # Update the tracker to negative (i.e., 0) and continue
             self.signal_emit_done = 0
@@ -1426,8 +1424,6 @@ class MainWindow(QWidget, Ui_MainWindow):
                     # Set the x-axis limits
                     canvas.axes.set_xlim(self.signal_time[start_i],
                                          self.signal_time[end_i-1])
-                    # Remove the x-axis tick marks
-                    canvas.axes.tick_params(labelbottom=False)
                 # Set the x-axis limits
                 canvas.axes.set_xlim(self.signal_time[start_i],
                                      self.signal_time[end_i-1])

@@ -600,12 +600,9 @@ def filter_temporal(signal_in, sample_rate, mask, freq_cutoff=100.0,
                                  sample_rate/2.0], [1, 0], Hz=sample_rate)
         a = 1.0
         # Reshape the data to 2D array with signals in the columns
-        print(f'b coefficient: {len(b)}')
-        print(f'Data Shape Before Reshape: {signal_in.shape}')
         data = np.reshape(signal_in, (signal_in.shape[0],
                                       signal_in.shape[1]*signal_in.shape[2]))
         # Apply the filter to all the data at once
-        print(f'Data Shape After Reshape: {data.shape}')
         try:
             data = filtfilt(b, a, data, axis=0)
         except ValueError:
@@ -613,8 +610,6 @@ def filter_temporal(signal_in, sample_rate, mask, freq_cutoff=100.0,
             print('The padding has been reduced accordingly.')
             print('Trying again.')
             data = filtfilt(b, a, data, axis=0, padlen=data.shape[0]-1)
-        else:
-            print('An unknown error occurred. Temportal filtering cannot be performed on this data.')
         # Return data to original shape
         signal_out = np.reshape(data, (signal_in.shape[0],
                                        signal_in.shape[1], signal_in.shape[2]))
