@@ -549,6 +549,7 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Check for image crop
             if self.crop_cb.isChecked():
                 self.data = self.video_data_raw[0]
+                self.im_bkgd = self.data[0]
             if self.rotate_tracker != 0:
                 self.data = np.rot90(self.data,
                                      k=self.rotate_tracker,
@@ -584,16 +585,6 @@ class MainWindow(QWidget, Ui_MainWindow):
         else:
             # Calcium transient, don't flip the data
             self.data_filt = self.data.astype(float)'''
-
-        # Temporal filter
-        if self.filter_checkbox.isChecked():
-            filter_timestart = time.process_time()
-            # Apply the low pass filter
-            self.data_filt = filter_temporal(
-                self.data_filt, self.data_fps, self.mask, filter_order=100)
-            filter_timeend = time.process_time()
-            print(
-                f'Filter Time: {filter_timeend-filter_timestart}')
 
         # Remove background
         if self.rm_bkgd_checkbox.isChecked():
@@ -633,6 +624,16 @@ class MainWindow(QWidget, Ui_MainWindow):
             bin_timeend = time.process_time()
             print(
                 f'Binning Time: {bin_timeend-bin_timestart}')
+
+        # Temporal filter
+        if self.filter_checkbox.isChecked():
+            filter_timestart = time.process_time()
+            # Apply the low pass filter
+            self.data_filt = filter_temporal(
+                self.data_filt, self.data_fps, self.mask, filter_order=100)
+            filter_timeend = time.process_time()
+            print(
+                f'Filter Time: {filter_timeend-filter_timestart}')
 
         # Drift Removal
         if self.drift_checkbox.isChecked():
@@ -1006,7 +1007,6 @@ class MainWindow(QWidget, Ui_MainWindow):
         # Find the time index value to which the bot entry is closest
         bot_ind = abs(self.signal_time-bot_val)
         self.axes_start_ind = np.argmin(bot_ind)
-        print(f'Just set lower limit to {self.axes_start_ind}.')
         # Adjust the start time string accordingly
         self.axes_start_time_edit.setText(
             str(self.signal_time[self.axes_start_ind]))
