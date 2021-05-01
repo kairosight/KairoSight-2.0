@@ -67,8 +67,8 @@
      <rect>
       <x>10</x>
       <y>450</y>
-      <width>161</width>
-      <height>131</height>
+      <width>171</width>
+      <height>243</height>
      </rect>
     </property>
     <layout class="QVBoxLayout" name="image_properties_vl">
@@ -164,6 +164,163 @@
            <string>Calcium</string>
           </property>
          </item>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="rotate_hl">
+       <item>
+        <widget class="QLabel" name="rotate_label">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="text">
+          <string>Rotate:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="rotate_ccw90_button">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="whatsThis">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>90 CCW</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="rotate_cw90_button">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="text">
+          <string>90 CW</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="crop_label_hl">
+       <item>
+        <widget class="QCheckBox" name="crop_cb">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="text">
+          <string>Crop</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="crop_x_hl">
+       <item>
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::Fixed</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>10</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QLabel" name="crop_xlabel">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string>X Bounds:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="crop_xlower_edit">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="crop_xupper_edit">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="crop_y_hl">
+       <item>
+        <spacer name="horizontalSpacer_9">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::Fixed</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>10</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QLabel" name="crop_ylabel">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="text">
+          <string>Y Bounds:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="crop_ylower_edit">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="crop_yupper_edit">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
         </widget>
        </item>
       </layout>
@@ -310,9 +467,9 @@
    <widget class="QWidget" name="verticalLayoutWidget_6">
     <property name="geometry">
      <rect>
-      <x>190</x>
+      <x>200</x>
       <y>450</y>
-      <width>171</width>
+      <width>181</width>
       <height>271</height>
      </rect>
     </property>
@@ -717,9 +874,9 @@
    <widget class="QWidget" name="verticalLayoutWidget_7">
     <property name="geometry">
      <rect>
-      <x>380</x>
+      <x>400</x>
       <y>450</y>
-      <width>101</width>
+      <width>111</width>
       <height>215</height>
      </rect>
     </property>
@@ -998,7 +1155,7 @@
      <rect>
       <x>1230</x>
       <y>40</y>
-      <width>61</width>
+      <width>74</width>
       <height>73</height>
      </rect>
     </property>
@@ -1070,7 +1227,7 @@
      <rect>
       <x>1230</x>
       <y>190</y>
-      <width>61</width>
+      <width>74</width>
       <height>80</height>
      </rect>
     </property>
@@ -1142,7 +1299,7 @@
      <rect>
       <x>1230</x>
       <y>350</y>
-      <width>61</width>
+      <width>74</width>
       <height>80</height>
      </rect>
     </property>
@@ -1214,7 +1371,7 @@
      <rect>
       <x>1230</x>
       <y>500</y>
-      <width>61</width>
+      <width>74</width>
       <height>80</height>
      </rect>
     </property>

@@ -128,6 +128,7 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.load_button.clicked.connect(self.load_data)
         self.refresh_button.clicked.connect(self.refresh_data)
         self.data_prop_button.clicked.connect(self.data_properties)
+        self.crop_cb.stateChanged.connect(self.crop_enable)
         self.signal_select_button.clicked.connect(self.signal_select)
         self.prep_button.clicked.connect(self.run_prep)
         self.analysis_drop.currentIndexChanged.connect(self.analysis_select)
@@ -149,6 +150,14 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.sig4_x_edit.editingFinished.connect(self.signal_select_edit)
         self.sig4_y_edit.editingFinished.connect(self.signal_select_edit)
         self.export_movie_button.clicked.connect(self.export_movie)
+        self.rotate_ccw90_button.clicked.connect(self.rotate_image_ccw90)
+        self.rotate_cw90_button.clicked.connect(self.rotate_image_cw90)
+        self.crop_xlower_edit.editingFinished.connect(self.crop_update)
+        self.crop_xupper_edit.editingFinished.connect(self.crop_update)
+        self.crop_ylower_edit.editingFinished.connect(self.crop_update)
+        self.crop_yupper_edit.editingFinished.connect(self.crop_update)
+        self.rm_bkgd_method_drop.currentIndexChanged.connect(
+            self.rm_bkgd_options)
 
         # Thread runner
         self.threadpool = QThreadPool()
@@ -165,6 +174,8 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.sig_disp_bools = [[False, False], [False, False],
                                [False, False], [False, False]]
         self.signal_emit_done = 1
+        self.rotate_tracker = 0
+        self.preparation_tracker = 0
         self.cnames = ['cornflowerblue', 'gold', 'springgreen', 'lightcoral']
         # Designate that dividing by zero will not generate an error
         np.seterr(divide='ignore', invalid='ignore')
@@ -185,6 +196,8 @@ class MainWindow(QWidget, Ui_MainWindow):
             source=(self.file_path + "/" + self.file_name))
         # Extract the optical data from the stack
         self.data = self.video_data_raw[0]
+        self.data_prop = self.data
+        self.im_bkgd = self.data[0]
         # Populate the axes start and end indices
         self.axes_start_ind = 0
         self.axes_end_ind = self.data.shape[0]-1
@@ -219,6 +232,17 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.data_prop_button.setEnabled(True)
         self.image_type_label.setEnabled(True)
         self.image_type_drop.setEnabled(True)
+        self.rotate_label.setEnabled(True)
+        self.rotate_ccw90_button.setEnabled(True)
+        self.rotate_cw90_button.setEnabled(True)
+        self.crop_cb.setEnabled(True)
+        self.crop_cb.setChecked(False)
+        self.crop_xlower_edit.setText('0')
+        self.crop_xupper_edit.setText(str(self.data.shape[2]-1))
+        self.crop_xbound = [0, self.data.shape[2]-1]
+        self.crop_ylower_edit.setText('0')
+        self.crop_yupper_edit.setText(str(self.data.shape[1]-1))
+        self.crop_ybound = [0, self.data.shape[1]-1]
         # Enable signal coordinate tools and clear edit boxes
         self.sig1_x_edit.setEnabled(False)
         self.sig1_x_edit.setText('')
@@ -326,10 +350,10 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Check data type and flip if necessary
             if self.image_type_drop.currentIndex() == 0:
                 # Membrane potential, flip the data
-                self.data_filt = self.data.astype(float)*-1
+                self.data_prop = self.data.astype(float)*-1
             else:
                 # Calcium transient, don't flip the data
-                self.data_filt = self.data.astype(float)
+                self.data_prop = self.data.astype(float)
             # Create time vector
             self.signal_time = np.arange(self.data.shape[0])*1/self.data_fps
             # Populate the axes start and end edit boxes
@@ -350,10 +374,11 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.rm_bkgd_checkbox.setEnabled(True)
             self.rm_bkgd_method_label.setEnabled(True)
             self.rm_bkgd_method_drop.setEnabled(True)
-            self.bkgd_dark_label.setEnabled(True)
-            self.bkgd_dark_edit.setEnabled(True)
-            self.bkgd_light_label.setEnabled(True)
-            self.bkgd_light_edit.setEnabled(True)
+            if self.rm_bkgd_method_drop.currentIndex() == 2:
+                self.bkgd_dark_label.setEnabled(True)
+                self.bkgd_dark_edit.setEnabled(True)
+                self.bkgd_light_label.setEnabled(True)
+                self.bkgd_light_edit.setEnabled(True)
             self.bin_checkbox.setEnabled(True)
             self.bin_drop.setEnabled(True)
             self.filter_checkbox.setEnabled(True)
@@ -409,6 +434,27 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.image_scale_edit.setEnabled(False)
             self.image_type_label.setEnabled(False)
             self.image_type_drop.setEnabled(False)
+            self.rotate_label.setEnabled(False)
+            self.rotate_ccw90_button.setEnabled(False)
+            self.rotate_cw90_button.setEnabled(False)
+            # Check for image crop
+            if self.crop_cb.isChecked():
+                self.data_prop = self.data_prop[:,
+                                                self.crop_ybound[0]:
+                                                    self.crop_ybound[1]+1,
+                                                self.crop_xbound[0]:
+                                                    self.crop_xbound[1]+1]
+                self.im_bkgd = self.im_bkgd[self.crop_ybound[0]:
+                                            self.crop_ybound[1]+1,
+                                            self.crop_xbound[0]:
+                                            self.crop_xbound[1]+1]
+            self.crop_cb.setEnabled(False)
+            self.crop_xlower_edit.setEnabled(False)
+            self.crop_xupper_edit.setEnabled(False)
+            self.crop_ylower_edit.setEnabled(False)
+            self.crop_yupper_edit.setEnabled(False)
+            # Update preparation tracker
+            self.preparation_tracker = 0
             # Change the button string
             self.data_prop_button.setText('Update Properties')
             # Update the axes
@@ -416,21 +462,29 @@ class MainWindow(QWidget, Ui_MainWindow):
 
         else:
             # Disable Preparation Tools
+            self.rm_bkgd_checkbox.setChecked(False)
             self.rm_bkgd_checkbox.setEnabled(False)
             self.rm_bkgd_method_label.setEnabled(False)
             self.rm_bkgd_method_drop.setEnabled(False)
+            self.rm_bkgd_method_drop.setCurrentIndex(0)
             self.bkgd_dark_label.setEnabled(False)
             self.bkgd_dark_edit.setEnabled(False)
             self.bkgd_light_label.setEnabled(False)
             self.bkgd_light_edit.setEnabled(False)
+            self.bin_checkbox.setChecked(False)
             self.bin_checkbox.setEnabled(False)
+            self.bin_drop.setCurrentIndex(0)
             self.bin_drop.setEnabled(False)
+            self.filter_checkbox.setChecked(False)
             self.filter_checkbox.setEnabled(False)
             self.filter_label_separator.setEnabled(False)
             self.filter_upper_label.setEnabled(False)
             self.filter_upper_edit.setEnabled(False)
+            self.drift_checkbox.setChecked(False)
             self.drift_checkbox.setEnabled(False)
+            self.drift_drop.setCurrentIndex(0)
             self.drift_drop.setEnabled(False)
+            self.normalize_checkbox.setChecked(False)
             self.normalize_checkbox.setEnabled(False)
             self.prep_button.setEnabled(False)
             # Disable Analysis Tools
@@ -469,6 +523,19 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.sig3_y_edit.setEnabled(False)
             self.sig4_x_edit.setEnabled(False)
             self.sig4_y_edit.setEnabled(False)
+            # Reset signal variables
+            self.signal_ind = 0
+            self.signal_coord = np.zeros((4, 2)).astype(int)
+            self.signal_toggle = np.zeros((4, 1))
+            self.norm_flag = 0
+            self.play_bool = 0
+            # Reset analysis tools
+            self.start_time_edit.setText('')
+            self.end_time_edit.setText('')
+            self.max_apd_edit.setText('')
+            self.perc_apd_edit.setText('')
+            self.axes_end_time_edit.setText('')
+            self.axes_start_time_edit.setText('')
             # Activate Properties Tools
             self.frame_rate_label.setEnabled(True)
             self.frame_rate_edit.setEnabled(True)
@@ -476,8 +543,30 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.image_scale_edit.setEnabled(True)
             self.image_type_label.setEnabled(True)
             self.image_type_drop.setEnabled(True)
+            self.rotate_label.setEnabled(True)
+            self.rotate_ccw90_button.setEnabled(True)
+            self.rotate_cw90_button.setEnabled(True)
+            # Check for image crop
+            if self.crop_cb.isChecked():
+                self.data = self.video_data_raw[0]
+                self.im_bkgd = self.data[0]
+            if self.rotate_tracker != 0:
+                self.data = np.rot90(self.data,
+                                     k=self.rotate_tracker,
+                                     axes=(1, 2))
+                self.im_bkgd = np.rot90(self.im_bkgd,
+                                        k=self.rotate_tracker,
+                                        axes=(1, 2))
+            self.crop_cb.setEnabled(True)
+            self.crop_xlower_edit.setEnabled(True)
+            self.crop_xupper_edit.setEnabled(True)
+            self.crop_ylower_edit.setEnabled(True)
+            self.crop_yupper_edit.setEnabled(True)
             # Change the button string
             self.data_prop_button.setText('Start Preparation')
+            # Update the axes
+            self.update_analysis_win()
+            self.update_axes()
 
     def run_prep(self):
         # Pass the function to execute
@@ -489,22 +578,13 @@ class MainWindow(QWidget, Ui_MainWindow):
         # Designate that dividing by zero will not generate an error
         np.seterr(divide='ignore', invalid='ignore')
         # Grab unprepped data and check data type to flip if necessary
-        if self.image_type_drop.currentIndex() == 0:
+        self.data_filt = self.data_prop
+        '''if self.image_type_drop.currentIndex() == 0:
             # Membrane potential, flip the data
             self.data_filt = self.data.astype(float)*-1
         else:
             # Calcium transient, don't flip the data
-            self.data_filt = self.data.astype(float)
-
-        # Temporal filter
-        if self.filter_checkbox.isChecked():
-            filter_timestart = time.process_time()
-            # Apply the low pass filter
-            self.data_filt = filter_temporal(
-                self.data_filt, self.data_fps, self.mask, filter_order=100)
-            filter_timeend = time.process_time()
-            print(
-                f'Filter Time: {filter_timeend-filter_timestart}')
+            self.data_filt = self.data.astype(float)'''
 
         # Remove background
         if self.rm_bkgd_checkbox.isChecked():
@@ -519,7 +599,7 @@ class MainWindow(QWidget, Ui_MainWindow):
             rm_light = int(self.bkgd_light_edit.text())
             # Generate the mask for background removal using original data
             frame_out, self.mask, markers = mask_generate(
-                self.data[0], rm_method, (rm_dark, rm_light))
+                self.data_filt[0], rm_method, (rm_dark, rm_light))
             # Apply the mask for background removal
             self.data_filt = mask_apply(self.data_filt, self.mask)
             rm_bkgd_timeend = time.process_time()
@@ -544,6 +624,16 @@ class MainWindow(QWidget, Ui_MainWindow):
             bin_timeend = time.process_time()
             print(
                 f'Binning Time: {bin_timeend-bin_timestart}')
+
+        # Temporal filter
+        if self.filter_checkbox.isChecked():
+            filter_timestart = time.process_time()
+            # Apply the low pass filter
+            self.data_filt = filter_temporal(
+                self.data_filt, self.data_fps, self.mask, filter_order=100)
+            filter_timeend = time.process_time()
+            print(
+                f'Filter Time: {filter_timeend-filter_timestart}')
 
         # Drift Removal
         if self.drift_checkbox.isChecked():
@@ -590,9 +680,14 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.data_filt = self.data_filt/data_diff
             # Set normalization flag
             self.norm_flag = 1
+            normalize_timeend = time.process_time()
+            print(
+                f'Normalize Time: {normalize_timeend-normalize_timestart}')
         else:
             # Reset normalization flag
             self.norm_flag = 0
+        # Update preparation tracker
+        self.preparation_tracker = 1
         # Update axes
         self.update_axes()
         # Make the movie screen controls available if normalization occurred
@@ -601,9 +696,6 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.play_movie_button.setEnabled(True)
             self.export_movie_button.setEnabled(True)
             # self.optical_toggle_button.setEnabled(True)
-        normalize_timeend = time.process_time()
-        print(
-                f'Normalize Time: {normalize_timeend-normalize_timestart}')
 
     def analysis_select(self):
         if self.analysis_drop.currentIndex() == 0:
@@ -835,6 +927,8 @@ class MainWindow(QWidget, Ui_MainWindow):
             'button_press_event', self.on_click)
 
     def signal_select_edit(self):
+        print("I want to work!")
+        print(f'signal_emit_done: {self.signal_emit_done}')
         if self.signal_emit_done == 1:
             # Update the tracker to negative (i.e., 0) and continue
             self.signal_emit_done = 0
@@ -903,9 +997,9 @@ class MainWindow(QWidget, Ui_MainWindow):
                         y.setEnabled(True)
                         # Update the select signal button index
                         self.signal_ind = int(sum(self.signal_toggle))
-                    # Update the axes
-                    self.update_axes()
-                    self.signal_emit_done = 1
+            # Update the axes
+            self.update_axes()
+            self.signal_emit_done = 1
 
     def update_win(self):
         bot_val = float(self.axes_start_time_edit.text())
@@ -1020,6 +1114,136 @@ class MainWindow(QWidget, Ui_MainWindow):
         animation.save(save_fname[0],
                        dpi=self.mpl_canvas.fig.dpi)
 
+    # Rotate image 90 degrees counterclockwise function
+    def rotate_image_ccw90(self):
+        # Rotate the data 90 degress counterclockwise
+        self.data = np.rot90(self.data, k=1, axes=(1, 2))
+        # Rotate the bacground image 90 degrees counterclockwise
+        self.im_bkgd = np.rot90(self.im_bkgd, k=1)
+        # Update variable for tracking rotation
+        if self.rotate_tracker < 3:
+            self.rotate_tracker += 1
+        else:
+            self.rotate_tracker = 0
+        # Swap crop box values
+        self.crop_bound_rot()
+        # Update cropping strings according to new image dimensions
+        self.crop_update()
+
+    # Rotate image 90 degress clockwise function
+    def rotate_image_cw90(self):
+        # Rotate the data 90 degress clockwise
+        self.data = np.rot90(self.data, k=-1, axes=(1, 2))
+        # Rotate the bacground image 90 degrees clockwise
+        self.im_bkgd = np.rot90(self.im_bkgd, k=-1)
+        # Update variable for tracking rotation
+        if self.rotate_tracker == 0:
+            self.rotate_tracker = 3
+        else:
+            self.rotate_tracker -= 1
+        # Swap crop box values
+        self.crop_bound_rot()
+        # Update cropping strings according to new image dimensions
+        self.crop_update()
+
+    # Rotate cropping bounding box
+    def crop_bound_rot(self):
+        # Grab the current values
+        new_x = [int(self.crop_ylower_edit.text()),
+                 int(self.crop_yupper_edit.text())]
+        new_y = [int(self.crop_xlower_edit.text()),
+                 int(self.crop_xupper_edit.text())]
+        # Replace x values
+        self.crop_xlower_edit.setText(str(new_x[0]))
+        self.crop_xupper_edit.setText(str(new_x[1]))
+        # Replace y values
+        self.crop_ylower_edit.setText(str(new_y[0]))
+        self.crop_yupper_edit.setText(str(new_y[1]))
+
+    # Enable the crop limit boxes
+    def crop_enable(self):
+        if self.crop_cb.isChecked():
+            # Enable the labels and edit boxes for cropping
+            self.crop_xlabel.setEnabled(True)
+            self.crop_xlower_edit.setEnabled(True)
+            self.crop_xupper_edit.setEnabled(True)
+            self.crop_ylabel.setEnabled(True)
+            self.crop_ylower_edit.setEnabled(True)
+            self.crop_yupper_edit.setEnabled(True)
+            # Update the axes
+            self.update_axes()
+        else:
+            # Disable the labesl and edit boxes for cropping
+            self.crop_xlabel.setEnabled(False)
+            self.crop_xlower_edit.setEnabled(False)
+            self.crop_xupper_edit.setEnabled(False)
+            self.crop_ylabel.setEnabled(False)
+            self.crop_ylower_edit.setEnabled(False)
+            self.crop_yupper_edit.setEnabled(False)
+
+    def crop_update(self):
+        if self.signal_emit_done == 1:
+            # Create variable for stopping double tap
+            self.signal_emit_done = 0
+            # Check to make sure the x coordinates are within the image bounds
+            try:
+                new_x = [int(self.crop_xlower_edit.text()),
+                         int(self.crop_xupper_edit.text())]
+            except ValueError:
+                self.sig_win_warn(3)
+                self.crop_xlower_edit.setText(str(self.crop_xbound[0]))
+                self.crop_xupper_edit.setText(str(self.crop_xbound[1]))
+            else:
+                # Update the bounds of the crop box
+                if (new_x[0] < 0 or new_x[0] > self.data.shape[2] or
+                        new_x[1] < 0 or new_x[1] > self.data.shape[2]):
+                    self.sig_win_warn(2)
+                    self.crop_xlower_edit.setText(str(self.crop_xbound[0]))
+                    self.crop_xupper_edit.setText(str(self.crop_xbound[1]))
+                elif new_x[0] >= new_x[1]:
+                    self.sig_win_warn(4)
+                    self.crop_xlower_edit.setText(str(self.crop_xbound[0]))
+                    self.crop_xupper_edit.setText(str(self.crop_xbound[1]))
+                else:
+                    self.crop_xbound = [new_x[0], new_x[1]]
+            # Check to make sure the y coordinates are within the image bounds
+            try:
+                new_y = [int(self.crop_ylower_edit.text()),
+                         int(self.crop_yupper_edit.text())]
+            except ValueError:
+                self.sig_win_warn(3)
+                self.crop_ylower_edit.setText(str(self.crop_ybound[0]))
+                self.crop_yupper_edit.setText(str(self.crop_ybound[1]))
+            else:
+                # Update the bounds of the crop box
+                if (new_y[0] < 0 or new_y[0] > self.data.shape[1] or
+                        new_y[1] < 0 or new_y[1] > self.data.shape[1]):
+                    self.sig_win_warn(2)
+                    self.crop_ylower_edit.setText(str(self.crop_ybound[0]))
+                    self.crop_yupper_edit.setText(str(self.crop_ybound[1]))
+                elif new_y[0] >= new_y[1]:
+                    self.sig_win_warn(4)
+                    self.crop_ylower_edit.setText(str(self.crop_ybound[0]))
+                    self.crop_yupper_edit.setText(str(self.crop_ybound[1]))
+                else:
+                    self.crop_ybound = [new_y[0], new_y[1]]
+            # Update the image axis
+            self.update_axes()
+            # Indicate function has ended
+            self.signal_emit_done = 1
+
+    def rm_bkgd_options(self):
+        if self.rm_bkgd_method_drop.currentIndex() == 2:
+            self.bkgd_dark_label.setEnabled(True)
+            self.bkgd_dark_edit.setEnabled(True)
+            self.bkgd_light_label.setEnabled(True)
+            self.bkgd_light_edit.setEnabled(True)
+        else:
+            self.bkgd_dark_label.setEnabled(False)
+            self.bkgd_dark_edit.setEnabled(False)
+            self.bkgd_light_label.setEnabled(False)
+            self.bkgd_light_edit.setEnabled(False)
+
     # ASSIST (I.E., NON-BUTTON) FUNCTIONS
     # Function for grabbing the x and y coordinates of a button click
     def on_click(self, event):
@@ -1073,22 +1297,28 @@ class MainWindow(QWidget, Ui_MainWindow):
         elif ind == 1:
             msg.setText("The Start Time must be less than the End Time!")
         elif ind == 2:
-            msg.setText("Entered signal coordinates outside image dimensions!")
+            msg.setText("Entered coordinates outside image dimensions!")
         elif ind == 3:
             msg.setText("Entered value must be numeric!")
+        elif ind == 4:
+            msg.setText("Lower limit must be less than upper limit!")
         msg.setWindowTitle("Warning")
         msg.setStandardButtons(QMessageBox.Ok)
         msg.exec_()
 
     # Function for updating the axes
     def update_axes(self):
+        # UPDATE THE IMAGE AXIS
         # Determine if data is prepped or unprepped
-        data = self.data_filt
+        if self.preparation_tracker == 0:
+            data = self.data_prop
+        else:
+            data = self.data_filt
         # UPDATE THE OPTICAL IMAGE AXIS
         # Clear axis for update
         self.mpl_canvas.axes.cla()
         # Update the UI with an image off the top of the stack
-        self.mpl_canvas.axes.imshow(self.data[0], cmap='gray')
+        self.mpl_canvas.axes.imshow(self.im_bkgd, cmap='gray')
         # Match the matplotlib figure background color to the GUI
         self.mpl_canvas.fig.patch.set_facecolor(self.bkgd_color)
         # If normalized, overlay the potential values
@@ -1111,9 +1341,31 @@ class MainWindow(QWidget, Ui_MainWindow):
             else:
                 self.mpl_canvas.axes.scatter(
                     ind[0], ind[1], color=self.cnames[cnt])
+        # Check to see if crop is being utilized
+        if self.crop_cb.isChecked():
+            if self.data_prop_button.text() == 'Start Preparation':
+                # Plot vertical sides of bounding box
+                self.mpl_canvas.axes.plot(
+                    [self.crop_xbound[0], self.crop_xbound[0]],
+                    [self.crop_ybound[0], self.crop_ybound[1]],
+                    color='orange')
+                self.mpl_canvas.axes.plot(
+                    [self.crop_xbound[1], self.crop_xbound[1]],
+                    [self.crop_ybound[0], self.crop_ybound[1]],
+                    color='orange')
+                # Plot horizontal sides of bounding box
+                self.mpl_canvas.axes.plot(
+                    [self.crop_xbound[0], self.crop_xbound[1]],
+                    [self.crop_ybound[0], self.crop_ybound[0]],
+                    color='orange')
+                self.mpl_canvas.axes.plot(
+                    [self.crop_xbound[0], self.crop_xbound[1]],
+                    [self.crop_ybound[1], self.crop_ybound[1]],
+                    color='orange')
         # Tighten the border on the figure
         self.mpl_canvas.fig.tight_layout()
         self.mpl_canvas.draw()
+
         # UPDATE THE SIGNAL AXES
         # Grab the start and end indices
         start_i = self.axes_start_ind
@@ -1131,22 +1383,25 @@ class MainWindow(QWidget, Ui_MainWindow):
                 canvas.axes.plot(self.signal_time[start_i:end_i],
                                  data[start_i:end_i, ind[1], ind[0]],
                                  color=self.cnames[cnt])
+                # Grab the min and max in the y-axis
+                y0 = np.min(data[start_i:end_i, ind[1], ind[0]])-0.05
+                y1 = np.max(data[start_i:end_i, ind[1], ind[0]])+0.05
+                # Check for NAN values
+                if np.isnan(y0) or np.isnan(y1):
+                    y0 = -1.0
+                    y1 = 1.0
+                # Set y-axis limits
+                canvas.axes.set_ylim(y0, y1)
                 # Check to see if normalization has occurred
                 if self.normalize_checkbox.isChecked():
-                    # Grab the min and max in the y-axis
-                    y0 = np.min(data[start_i:end_i, ind[1], ind[0]])-0.05
-                    y1 = np.max(data[start_i:end_i, ind[1], ind[0]])+0.05
                     # Get the position of the movie frame
                     x = self.signal_time[self.movie_scroll_obj.value()]
                     # Overlay the frame location of the play feature
                     canvas.axes.plot([x, x], [y0, y1], 'lime')
                     # Set the y-axis limits
                     canvas.axes.set_ylim(y0, y1)
-                    # Check to see if limits have been established for analysis
+                # Check to see if limits have been established for analysis
                 if self.analysis_bot_lim:
-                    # Grab the min and max in the y-axis
-                    y0 = np.min(data[start_i:end_i, ind[1], ind[0]])-0.05
-                    y1 = np.max(data[start_i:end_i, ind[1], ind[0]])+0.05
                     # Get the position of the lower limit marker
                     x = self.signal_time[self.anal_start_ind]
                     # Overlay the frame location of the play feature
@@ -1154,9 +1409,6 @@ class MainWindow(QWidget, Ui_MainWindow):
                     # Set the y-axis limits
                     canvas.axes.set_ylim(y0, y1)
                 if self.analysis_top_lim:
-                    # Grab the min and max in the y-axis
-                    y0 = np.min(data[start_i:end_i, ind[1], ind[0]])-0.05
-                    y1 = np.max(data[start_i:end_i, ind[1], ind[0]])+0.05
                     # Get the position of the lower limit marker
                     x = self.signal_time[self.anal_end_ind]
                     # Overlay the frame location of the play feature
@@ -1179,9 +1431,6 @@ class MainWindow(QWidget, Ui_MainWindow):
                 # Set the x-axis limits
                 canvas.axes.set_xlim(self.signal_time[start_i],
                                      self.signal_time[end_i-1])
-                # If normalized, set the y-axis limits and tick labels
-                if self.norm_flag == 1:
-                    canvas.axes.set_ylim(-0.3, 1)
                 # Tighten the layout
                 canvas.fig.tight_layout()
                 # Draw the figure
