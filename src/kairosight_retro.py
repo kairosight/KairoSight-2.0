@@ -601,7 +601,9 @@ class MainWindow(QWidget, Ui_MainWindow):
             frame_out, self.mask, markers = mask_generate(
                 self.data_filt[0], rm_method, (rm_dark, rm_light))
             # Apply the mask for background removal
-            self.data_filt = mask_apply(self.data_filt, self.mask)
+            self.data_filt = mask_apply(self.data_filt,
+                                        self.mask,
+                                        self.image_type_drop.currentIndex())
             rm_bkgd_timeend = time.process_time()
             print(
                 f'Remove Background Time: {rm_bkgd_timeend-rm_bkgd_timestart}')
@@ -709,6 +711,7 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.perc_apd_label.setEnabled(False)
             self.perc_apd_edit.setEnabled(False)
             self.perc_apd_edit.setText('')
+            self.analysis_y_lim = False
             self.ensemble_cb_01.setEnabled(False)
             self.ensemble_cb_02.setEnabled(False)
             self.ensemble_cb_03.setEnabled(False)
@@ -723,6 +726,7 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.max_val_label.setEnabled(False)
             self.max_val_edit.setEnabled(False)
             self.max_val_edit.setText('')
+            self.analysis_y_lim = False
             self.ensemble_cb_01.setEnabled(False)
             self.ensemble_cb_02.setEnabled(False)
             self.ensemble_cb_03.setEnabled(False)
@@ -742,6 +746,8 @@ class MainWindow(QWidget, Ui_MainWindow):
                     checkboxname = 'ensemble_cb_0{}'.format(cnt+1)
                     checkbox = getattr(self, checkboxname)
                     checkbox.setEnabled(True)
+        # Update the axes accordingly
+        self.update_axes()
 
     def run_map(self):
         # Pass the function to execute
@@ -761,6 +767,11 @@ class MainWindow(QWidget, Ui_MainWindow):
         # Find the time index value to which the top entry is closest
         end_ind = abs(self.signal_time-end_time)
         end_ind = np.argmin(end_ind)
+        # Grab masking information
+        if self.image_type_drop.currentIndex() == 0:
+            transp = ~self.mask
+        else:
+            transp = self.mask
         # Calculate activation
         self.act_ind = calc_tran_activation(
             self.data_filt, start_ind, end_ind)
@@ -771,7 +782,10 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Generate a map of the activation times
             self.act_map = plt.figure()
             axes_act_map = self.act_map.add_axes([0.05, 0.1, 0.8, 0.8])
-            transp = ~self.mask
+            '''if self.image_type_drop.currentIndex() == 0:
+                transp = ~self.mask
+            else:
+                transp = self.mask'''
             transp = transp.astype(float)
             axes_act_map.imshow(self.data[0], cmap='gray')
             axes_act_map.imshow(self.act_val, alpha=transp, vmin=0,
@@ -794,7 +808,7 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Find the maximum amplitude of the action potential
             max_amp_ind = np.argmax(
                 self.data_filt[
-                    start_ind:start_ind+max_apd_ind, :, :], axis=0
+                    start_ind:start_ind+end_ind, :, :], axis=0
                 )+start_ind
             # Preallocate variable for percent apd index and value
             apd_ind = np.zeros(max_amp_ind.shape)
@@ -803,11 +817,11 @@ class MainWindow(QWidget, Ui_MainWindow):
             for n in np.arange(0, self.data_filt.shape[1]):
                 for m in np.arange(0, self.data_filt.shape[2]):
                     # Ignore pixels that have been masked out
-                    if not self.mask[n, m]:
+                    if transp[n, m]:
                         # Grab the data segment between max amp and end
                         tmp = self.data_filt[
                             max_amp_ind[n, m]:start_ind +
-                            max_apd_ind, n, m]
+                            end_ind, n, m]
                         # Find the minimum to find the index closest to
                         # desired apd percent
                         apd_ind[n, m] = np.argmin(
@@ -822,7 +836,7 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Generate a map of the action potential durations
             self.apd_map = plt.figure()
             axes_apd_map = self.apd_map.add_axes([0.05, 0.1, 0.8, 0.8])
-            transp = ~self.mask
+            '''transp = ~self.mask'''
             transp = transp.astype(float)
             top = max_apd_ind*(1/self.data_fps)
             axes_apd_map.imshow(self.data[0], cmap='gray')
@@ -1050,6 +1064,7 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.anal_end_ind = []
             # Set boolean to false so it no longer updates
             self.analysis_top_lim = False
+        # Grab new max amplitude value and update entry to actual value
         if self.max_val_edit.text():
             # Set boolean to true to signal axes updates accordingly
             self.analysis_y_lim = True
@@ -1324,7 +1339,10 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Get the current value of the movie slider
             sig_id = self.movie_scroll_obj.value()
             # Create the transparency mask
-            mask = ~self.mask
+            if self.image_type_drop.currentIndex() == 0:
+                mask = ~self.mask
+            else:
+                mask = self.mask
             thresh = self.data_filt[sig_id, :, :] > 0.3
             transp = mask == thresh
             transp = transp.astype(float)

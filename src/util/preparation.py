@@ -366,7 +366,7 @@ def mask_generate(frame_in, mask_type='Otsu_global', strict=(3, 5)):
     return frame_out, mask, markers
 
 
-def mask_apply(stack_in, mask):
+def mask_apply(stack_in, mask, invert):
     """Apply a binary mask to segment a stack (3-D array, TYX) of grayscale optical data.
 
        Parameters
@@ -375,6 +375,8 @@ def mask_apply(stack_in, mask):
             A 3-D array (T, Y, X) of optical data, dtype : uint16 or float
        mask : ndarray
             A binary 2-D array (Y, X) to mask optical data, dtype : np.bool_
+       invert : int
+            The currentIndex from the voltage/calcium drop down
 
        Returns
        -------
@@ -402,13 +404,17 @@ def mask_apply(stack_in, mask):
     # if (mask.shape[0] is not frame_0.shape[0]) or (mask.shape[1] is not frame_0.shape[1]):
     if mask.shape != frame_0.shape:
         raise ValueError('Mask shape must be the same as the stack frames:'
-                         '\nMask:\t{}\nFrame:\t{}'.format(mask.shape, frame_0.shape))
+                         '\nMask:\t{}\nFrame:\t{}'.format(
+                             mask.shape, frame_0.shape))
 
     stack_out = np.empty_like(stack_in)
 
     for i_frame, frame in enumerate(stack_in):
         frame_out = frame.copy()
-        frame_out[mask] = 0
+        if invert == 0:
+            frame_out[mask] = 0
+        else:
+            frame_out[~mask] = 0
         stack_out[i_frame] = frame_out
 
     return stack_out
