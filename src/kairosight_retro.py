@@ -658,21 +658,27 @@ class MainWindow(QWidget, Ui_MainWindow):
             for n in np.arange(0, self.data_filt.shape[1]):
                 for m in np.arange(0, self.data_filt.shape[2]):
                     # Ignore pixels that have been masked out
-                    if not self.mask[n, m]:
+                    if self.image_type_drop.currentIndex() == 1:
+                        mask = ~self.mask
+                    else:
+                        mask = self.mask
+                    if not mask[n, m]:
+                        '''data_min[n, m] = self.data_filt[
+                            data_min_ind[n, m], n, m]'''
                         # Check for the leading edge case
-                        if data_min_ind[n, m]-10 < 0:
+                        if data_min_ind[n, m]-2 < 0:
                             data_min[n, m] = np.mean(
-                                self.data_filt[0:22, n, m])
+                                self.data_filt[0:6, n, m])
                         # Check for the trailing edge case
-                        elif data_min_ind[n, m]+11 > last_ind:
+                        elif data_min_ind[n, m]+2 > last_ind:
                             data_min[n, m] = np.mean(
-                                self.data_filt[last_ind-21:last_ind, n, m])
+                                self.data_filt[last_ind-4:last_ind+1, n, m])
                         # Run assuming all indices are within time indices
                         else:
                             data_min[n, m] = np.mean(
                                 self.data_filt[
-                                    data_min_ind[n, m]-10:
-                                        data_min_ind[n, m]+11,
+                                    data_min_ind[n, m]-2:
+                                        data_min_ind[n, m]+2,
                                         n, m])
             # Find max amplitude of each signal
             data_diff = np.amax(self.data_filt, axis=0) - data_min
@@ -801,18 +807,18 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Grab the maximum APD value
             final_apd = float(self.max_apd_edit.text())
             # Find the associated time index
-            max_apd_ind = abs(self.signal_time-final_apd)
+            max_apd_ind = abs(self.signal_time-(final_apd+start_time))
             max_apd_ind = np.argmin(max_apd_ind)
             # Grab the percent APD
             percent_apd = float(self.perc_apd_edit.text())
             # Find the maximum amplitude of the action potential
             max_amp_ind = np.argmax(
                 self.data_filt[
-                    start_ind:start_ind+end_ind, :, :], axis=0
+                    start_ind:max_apd_ind, :, :], axis=0
                 )+start_ind
             # Preallocate variable for percent apd index and value
             apd_ind = np.zeros(max_amp_ind.shape)
-            self.apd_val = apd_ind
+            self.apd_val = np.zeros(max_amp_ind.shape)
             # Step through the data
             for n in np.arange(0, self.data_filt.shape[1]):
                 for m in np.arange(0, self.data_filt.shape[2]):
@@ -820,8 +826,7 @@ class MainWindow(QWidget, Ui_MainWindow):
                     if transp[n, m]:
                         # Grab the data segment between max amp and end
                         tmp = self.data_filt[
-                            max_amp_ind[n, m]:start_ind +
-                            end_ind, n, m]
+                            max_amp_ind[n, m]:max_apd_ind, n, m]
                         # Find the minimum to find the index closest to
                         # desired apd percent
                         apd_ind[n, m] = np.argmin(
@@ -838,7 +843,7 @@ class MainWindow(QWidget, Ui_MainWindow):
             axes_apd_map = self.apd_map.add_axes([0.05, 0.1, 0.8, 0.8])
             '''transp = ~self.mask'''
             transp = transp.astype(float)
-            top = max_apd_ind*(1/self.data_fps)
+            top = self.signal_time[max_apd_ind]-self.signal_time[start_ind]
             axes_apd_map.imshow(self.data[0], cmap='gray')
             axes_apd_map.imshow(self.apd_val, alpha=transp, vmin=0,
                                 vmax=top, cmap='jet')
