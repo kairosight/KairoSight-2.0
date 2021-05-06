@@ -218,7 +218,8 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.start_time_edit.setText('')
         self.end_time_edit.setText('')
         self.max_apd_edit.setText('')
-        self.perc_apd_edit.setText('')
+        self.perc_apd_edit_01.setText('')
+        self.perc_apd_edit_02.setText('')
         self.axes_end_time_edit.setText('')
         self.axes_start_time_edit.setText('')
         # Update the axes
@@ -292,8 +293,10 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.max_apd_edit.setEnabled(False)
         self.max_val_label.setEnabled(False)
         self.max_val_edit.setEnabled(False)
-        self.perc_apd_label.setEnabled(False)
-        self.perc_apd_edit.setEnabled(False)
+        self.perc_apd_label_01.setEnabled(False)
+        self.perc_apd_edit_01.setEnabled(False)
+        self.perc_apd_label_02.setEnabled(False)
+        self.perc_apd_edit_02.setEnabled(False)
         # Check the check box
         for n in np.arange(1, len(self.signal_toggle)):
             checkboxname = 'ensemble_cb_0{}'.format(n)
@@ -397,19 +400,32 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.end_time_edit.setEnabled(True)
             self.map_pushbutton.setEnabled(True)
             if self.analysis_drop.currentIndex() == 1:
+                self.max_val_label.setEnabled(False)
+                self.max_val_edit.setEnabled(False)
                 self.max_apd_label.setEnabled(True)
                 self.max_apd_edit.setEnabled(True)
+                self.perc_apd_label_01.setEnabled(True)
+                self.perc_apd_edit_01.setEnabled(True)
+                self.perc_apd_label_02.setEnabled(False)
+                self.perc_apd_edit_02.setEnabled(False)
+            elif self.analysis_drop.currentIndex() == 2:
                 self.max_val_label.setEnabled(True)
                 self.max_val_edit.setEnabled(True)
-                self.perc_apd_label.setEnabled(True)
-                self.perc_apd_edit.setEnabled(True)
+                self.max_apd_label.setEnabled(True)
+                self.max_apd_edit.setEnabled(True)
+                self.perc_apd_label_01.setEnabled(True)
+                self.perc_apd_edit_01.setEnabled(True)
+                self.perc_apd_label_02.setEnabled(True)
+                self.perc_apd_edit_02.setEnabled(True)
             else:
                 self.max_apd_label.setEnabled(False)
                 self.max_apd_edit.setEnabled(False)
                 self.max_val_label.setEnabled(False)
                 self.max_val_edit.setEnabled(False)
-                self.perc_apd_label.setEnabled(False)
-                self.perc_apd_edit.setEnabled(False)
+                self.perc_apd_label_01.setEnabled(False)
+                self.perc_apd_edit_01.setEnabled(False)
+                self.perc_apd_label_02.setEnabled(False)
+                self.perc_apd_edit_02.setEnabled(False)
             # Activate axes controls
             self.axes_start_time_label.setEnabled(True)
             self.axes_start_time_edit.setEnabled(True)
@@ -501,9 +517,12 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.max_apd_edit.setText('')
             self.max_val_label.setEnabled(False)
             self.max_val_edit.setEnabled(False)
-            self.perc_apd_label.setEnabled(False)
-            self.perc_apd_edit.setEnabled(False)
-            self.perc_apd_edit.setText('')
+            self.perc_apd_label_01.setEnabled(False)
+            self.perc_apd_edit_01.setEnabled(False)
+            self.perc_apd_label_02.setEnabled(False)
+            self.perc_apd_edit_02.setEnabled(False)
+            self.perc_apd_edit_01.setText('')
+            self.perc_apd_edit_02.setText('')
             # Disable Movie and Signal Tools
             self.signal_select_button.setEnabled(False)
             self.movie_scroll_obj.setEnabled(False)
@@ -533,7 +552,8 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.start_time_edit.setText('')
             self.end_time_edit.setText('')
             self.max_apd_edit.setText('')
-            self.perc_apd_edit.setText('')
+            self.perc_apd_edit_01.setText('')
+            self.perc_apd_edit_02.setText('')
             self.axes_end_time_edit.setText('')
             self.axes_start_time_edit.setText('')
             # Activate Properties Tools
@@ -714,9 +734,12 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.max_val_label.setEnabled(False)
             self.max_val_edit.setEnabled(False)
             self.max_val_edit.setText('')
-            self.perc_apd_label.setEnabled(False)
-            self.perc_apd_edit.setEnabled(False)
-            self.perc_apd_edit.setText('')
+            self.perc_apd_label_01.setEnabled(False)
+            self.perc_apd_edit_01.setEnabled(False)
+            self.perc_apd_label_02.setEnabled(False)
+            self.perc_apd_edit_02.setEnabled(False)
+            self.perc_apd_edit_01.setText('')
+            self.perc_apd_edit_02.setText('')
             self.analysis_y_lim = False
             self.ensemble_cb_01.setEnabled(False)
             self.ensemble_cb_02.setEnabled(False)
@@ -726,8 +749,10 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Enable the APD tools
             self.max_apd_label.setEnabled(True)
             self.max_apd_edit.setEnabled(True)
-            self.perc_apd_label.setEnabled(True)
-            self.perc_apd_edit.setEnabled(True)
+            self.perc_apd_label_01.setEnabled(True)
+            self.perc_apd_edit_01.setEnabled(True)
+            self.perc_apd_label_02.setEnabled(False)
+            self.perc_apd_edit_02.setEnabled(False)
             # Disable amplitude and checkboxes
             self.max_val_label.setEnabled(False)
             self.max_val_edit.setEnabled(False)
@@ -743,9 +768,12 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.max_apd_edit.setText('')
             self.max_val_label.setEnabled(True)
             self.max_val_edit.setEnabled(True)
-            self.perc_apd_label.setEnabled(False)
-            self.perc_apd_edit.setEnabled(False)
-            self.perc_apd_edit.setText('')
+            self.perc_apd_label_01.setEnabled(True)
+            self.perc_apd_edit_01.setEnabled(True)
+            self.perc_apd_label_02.setEnabled(True)
+            self.perc_apd_edit_02.setEnabled(True)
+            self.perc_apd_edit_01.setText('')
+            self.perc_apd_edit_02.setText('')
             # Enable the checkboxes next to populated signal axes
             for cnt, n in enumerate(self.signal_toggle):
                 if n == 1:
@@ -810,7 +838,7 @@ class MainWindow(QWidget, Ui_MainWindow):
             max_apd_ind = abs(self.signal_time-(final_apd+start_time))
             max_apd_ind = np.argmin(max_apd_ind)
             # Grab the percent APD
-            percent_apd = float(self.perc_apd_edit.text())
+            percent_apd = float(self.perc_apd_edit_01.text())
             # Find the maximum amplitude of the action potential
             max_amp_ind = np.argmax(
                 self.data_filt[
@@ -854,8 +882,10 @@ class MainWindow(QWidget, Ui_MainWindow):
                 cax=cax, format='%.3f')
         # Generate data for succession of APDs
         if analysis_type == 2:
-            # Grab the start and end time, amplitude threshold, and signals
+            # Grab the amplitude threshold, apd values and signals
             amp_thresh = float(self.max_val_edit.text())
+            apd_input_01 = float(self.perc_apd_edit_01.text())
+            apd_input_02 = float(self.perc_apd_edit_02.text())
             # Identify which signals have been selected for calculation
             ensemble_list = [self.ensemble_cb_01.isChecked(),
                              self.ensemble_cb_02.isChecked(),
@@ -867,8 +897,8 @@ class MainWindow(QWidget, Ui_MainWindow):
             peak_amp = []
             diast_ind = []
             act_ind = []
-            apd_val_30 = []
-            apd_val_80 = []
+            apd_val_01 = []
+            apd_val_02 = []
             apd_val_tri = []
             tau_fall = []
             f1_f0 = []
@@ -891,19 +921,21 @@ class MainWindow(QWidget, Ui_MainWindow):
                 act_ind.append(act_ind_calc(data_oap[idx], diast_ind[idx],
                                             peak_ind[idx]))
                 # Calculate the APD30
-                apd_ind_30 = apd_ind_calc(data_oap[idx], end_ind,
+                apd_ind_01 = apd_ind_calc(data_oap[idx], end_ind,
                                           diast_ind[idx], peak_ind[idx],
-                                          0.3)
-                apd_val_30.append(self.signal_time[apd_ind_30] -
+                                          apd_input_01)
+                print(f'apd_ind: {apd_ind_01}')
+                print(f'act_ind: {act_ind[idx]}')
+                apd_val_01.append(self.signal_time[apd_ind_01] -
                                   self.signal_time[act_ind[idx]])
                 # Calculate APD80
-                apd_ind_80 = apd_ind_calc(data_oap[idx], end_ind,
+                apd_ind_02 = apd_ind_calc(data_oap[idx], end_ind,
                                           diast_ind[idx], peak_ind[idx],
-                                          0.8)
-                apd_val_80.append(self.signal_time[apd_ind_80] -
+                                          apd_input_02)
+                apd_val_02.append(self.signal_time[apd_ind_02] -
                                   self.signal_time[act_ind[idx]])
                 # Calculate APD triangulation
-                apd_val_tri.append(apd_val_80[idx]-apd_val_30[idx])
+                apd_val_tri.append(apd_val_02[idx]-apd_val_01[idx])
                 # Calculate Tau Fall
                 tau_fall.append(tau_calc(data_oap[idx], self.data_fps,
                                          peak_ind[idx], diast_ind[idx],
@@ -934,8 +966,9 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Write results to a spreadsheet
             ensemble_xlsx_print(save_fname[0], self.signal_time, ind_analyze,
                                 data_oap, act_ind, peak_ind, tau_fall,
-                                apd_val_30, apd_val_80, apd_val_tri, d_f0,
-                                f1_f0)
+                                apd_input_01, apd_val_01, apd_input_02,
+                                apd_val_02, apd_val_tri, d_f0, f1_f0,
+                                self.image_type_drop.currentIndex())
 
     def signal_select(self):
         # Create placeholders for the x and y coordinates
