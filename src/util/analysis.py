@@ -276,7 +276,7 @@ def oap_peak_calc(signal_in, start_ind, end_ind, amp_thresh, fps):
     # Check peak separation, remove any peaks at rates > 500 bpm (i.e., cycle
     # length < 120 ms)
     peak_sep = peak_ind[1:]-peak_ind[:-1]
-    rm = [n for n in np.arange(0, len(peak_sep)) if peak_sep[n]*1/fps < 0.120]
+    rm = [n for n in np.arange(0, len(peak_sep)) if peak_sep[n]*1/fps < 0.05]
     peak_ind = np.delete(peak_ind, rm)
     # Output the indices of the peaks
     return peak_ind.astype(int)
@@ -398,7 +398,6 @@ def act_ind_calc(signal_in, start_ind, end_ind):
         act_ind = np.empty(end_ind.shape)
         for idx, sia in enumerate(start_ind):
             act_ind[idx] = np.argmax(dVdt[sia:end_ind[idx]], axis=0)+sia-1
-            print(f'{idx}: {act_ind[idx]}')
     # Calculate the image wide activation for a single cycle length
     else:
         # Calculate the derivative
@@ -519,7 +518,7 @@ def ensemble_xlsx_print(file_name, signal_time, ind_analyze, data_oap, act_ind,
             im_str, int(round(perc_apd_01*100))), bold)
         worksheet.write(row+1, 4, '{}APD{} (s)'.format(
             im_str, int(round(perc_apd_02*100))), bold)
-        worksheet.write(row+1, 5, 'APDTri (s)', bold)
+        worksheet.write(row+1, 5, '{}APDTri (s)'.format(im_str), bold)
         worksheet.write(row+1, 6, 'D_F0', bold)
         worksheet.write(row+1, 7, 'F1_F0', bold)
         worksheet.write(row+1, 8, 'CL (s)', bold)

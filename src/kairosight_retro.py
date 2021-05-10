@@ -674,38 +674,89 @@ class MainWindow(QWidget, Ui_MainWindow):
             data_min = np.zeros(data_min_ind.shape)
             # Grab the number of indices in the time axis (axis=0)
             last_ind = self.data_filt.shape[0]
+            # Ignore pixels that have been masked out
+            if self.image_type_drop.currentIndex() == 0:
+                mask = ~self.mask
+            else:
+                mask = self.mask
             # Step through the data
             for n in np.arange(0, self.data_filt.shape[1]):
                 for m in np.arange(0, self.data_filt.shape[2]):
-                    # Ignore pixels that have been masked out
-                    if self.image_type_drop.currentIndex() == 1:
-                        mask = ~self.mask
-                    else:
-                        mask = self.mask
-                    if not mask[n, m]:
-                        '''data_min[n, m] = self.data_filt[
-                            data_min_ind[n, m], n, m]'''
+                    # Grab a region of indices around the signal minimum
+                    if mask[n, m]:
+                        data_min[n, m] = self.data_filt[
+                            data_min_ind[n, m], n, m]
                         # Check for the leading edge case
                         if data_min_ind[n, m]-2 < 0:
-                            data_min[n, m] = np.mean(
-                                self.data_filt[0:6, n, m])
+                            data_seg = self.data_filt[0:6, n, m]
+                            '''data_min[n, m] = np.mean(
+                                self.data_filt[0:6, n, m])'''
                         # Check for the trailing edge case
                         elif data_min_ind[n, m]+2 > last_ind:
-                            data_min[n, m] = np.mean(
-                                self.data_filt[last_ind-4:last_ind+1, n, m])
+                            data_seg = self.data_filt[
+                                last_ind-4:last_ind+1, n, m]
+                            '''data_min[n, m] = np.mean(
+                                self.data_filt[last_ind-4:last_ind+1, n, m])'''
                         # Run assuming all indices are within time indices
                         else:
-                            data_min[n, m] = np.mean(
+                            data_seg = self.data_filt[
+                                data_min_ind[n, m]-2:data_min_ind[n, m]+2,
+                                n,
+                                m]
+                        '''data_min[n, m] = np.mean(
                                 self.data_filt[
                                     data_min_ind[n, m]-2:
                                         data_min_ind[n, m]+2,
-                                        n, m])
-            # Find max amplitude of each signal
+                                        n, m])'''
+                        # Grab all values less than the maximum of this segment
+                        seg_bool = self.data_filt[:, n, m] < max(data_seg)
+                        # Create a vector of the index values of the signal
+                        ind = np.arange(0, self.data_filt.shape[0])
+                        # Pull out all of the low value chunks
+                        ind = ind[seg_bool]
+                        # Find the points of separation in the chunks
+                        # (i.e., index steps > 1)
+                        ind_seg = ind[1:] - ind[0:len(ind)-1]
+                        ind_seg = np.append(ind_seg, 1)
+                        # print(f'{n} x {m} = {mask[n, m]}')
+                        ind_sep = ind[ind_seg != 1]
+                        # Create a vector to step through low value chunks
+                        ind_sep = np.insert(ind_sep, 0, 0)
+                        # Preallocate variable for the min values of each chunk
+                        test_min_all = np.zeros(len(ind_sep)-1)
+                        # Step through each chunk extracting the minimum value
+                        for x in np.arange(0, len(ind_sep)-1):
+                            # print(f'n: {n}')
+                            # print(f'm: {m}')
+                            # print(f'Mask: {mask[n, m]}')
+                            seg = self.data_filt[
+                                ind[ind_sep[x]:ind_sep[x+1]+1], n, m]
+                            if seg.size == 0:
+                                test_min_all[x] = np.nan
+                            else:
+                                test_min_all[x] = np.min(seg)
+                        test_min_all = np.delete(
+                            test_min_all,
+                            [i for i, x in enumerate(np.isnan(test_min_all)) if x])
+                        '''test_min_all[x] = np.min(
+                        self.data_filt[ind[ind_sep[x]:ind_sep[x+1]+1],
+                                                   n,
+                                                   m])'''
+                        # Calculate the average minimum
+                        if test_min_all.size == 0:
+                            continue
+                        else:
+                            data_min[n, m] = np.mean(test_min_all)
+            # Baseline the signals to near zero using the average minimum
+            self.data_filt = self.data_filt - data_min
+            # Normalize using the maximum value of the signal
+            self.data_filt = self.data_filt/np.amax(self.data_filt, axis=0)
+            '''# Find max amplitude of each signal
             data_diff = np.amax(self.data_filt, axis=0) - data_min
             # Baseline the data
             self.data_filt = self.data_filt-data_min
             # Normalize via broadcasting
-            self.data_filt = self.data_filt/data_diff
+            self.data_filt = self.data_filt/data_diff'''
             # Set normalization flag
             self.norm_flag = 1
             normalize_timeend = time.process_time()
@@ -906,8 +957,8 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Iterate through the code
             for idx in np.arange(len(ind_analyze)):
                 data_oap.append(
-                    self.data_filt[:, self.signal_coord[idx][1],
-                                   self.signal_coord[idx][0]])
+                    self.data_filt[:, ind_analyze[idx][1],
+                                   ind_analyze[idx][0]])
                 # Calculate peak indices
                 peak_ind.append(oap_peak_calc(data_oap[idx], start_ind,
                                               end_ind, amp_thresh,
@@ -924,8 +975,6 @@ class MainWindow(QWidget, Ui_MainWindow):
                 apd_ind_01 = apd_ind_calc(data_oap[idx], end_ind,
                                           diast_ind[idx], peak_ind[idx],
                                           apd_input_01)
-                print(f'apd_ind: {apd_ind_01}')
-                print(f'act_ind: {act_ind[idx]}')
                 apd_val_01.append(self.signal_time[apd_ind_01] -
                                   self.signal_time[act_ind[idx]])
                 # Calculate APD80
@@ -950,16 +999,16 @@ class MainWindow(QWidget, Ui_MainWindow):
                 # Calculate the baseline fluorescence as the average of the
                 # first 10 points
                 f0 = np.average(data[:11,
-                                     self.signal_coord[idx][1],
-                                     self.signal_coord[idx][0]])
+                                     ind_analyze[idx][1],
+                                     ind_analyze[idx][0]])
                 # Calculate F1/F0 fluorescent ratio
                 f1_f0.append(data[peak_ind[idx],
-                                  self.signal_coord[idx][1],
-                                  self.signal_coord[idx][0]]/f0)
+                                  ind_analyze[idx][1],
+                                  ind_analyze[idx][0]]/f0)
                 # Calculate D/F0 fluorescent ratio
                 d_f0.append(data[diast_ind[idx],
-                                 self.signal_coord[idx][1],
-                                 self.signal_coord[idx][0]]/f0)
+                                 ind_analyze[idx][1],
+                                 ind_analyze[idx][0]]/f0)
             # Open dialogue box for selecting the data directory
             save_fname = QFileDialog.getSaveFileName(
                 self, "Save File", os.getcwd(), "Excel Files (*.xlsx)")
