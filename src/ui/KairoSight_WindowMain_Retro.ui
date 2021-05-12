@@ -696,6 +696,21 @@
            <string>9x9</string>
           </property>
          </item>
+         <item>
+          <property name="text">
+           <string>15x15</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>21x21</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>31x31</string>
+          </property>
+         </item>
         </widget>
        </item>
       </layout>

@@ -275,8 +275,10 @@ def oap_peak_calc(signal_in, start_ind, end_ind, amp_thresh, fps):
         peak_ind[n] = np.argmax(signal_in[peak_win])+peak_win[0]
     # Check peak separation, remove any peaks at rates > 500 bpm (i.e., cycle
     # length < 120 ms)
+    # !!! Changed to 0.05 or 50 ms for purposes of testing, pending actualy
+    # sampling rate information for guinea pig data !!!
     peak_sep = peak_ind[1:]-peak_ind[:-1]
-    rm = [n for n in np.arange(0, len(peak_sep)) if peak_sep[n]*1/fps < 0.05]
+    rm = [n for n in np.arange(0, len(peak_sep)) if peak_sep[n]*1/fps < 0.120]
     peak_ind = np.delete(peak_ind, rm)
     # Output the indices of the peaks
     return peak_ind.astype(int)

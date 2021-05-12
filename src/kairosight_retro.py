@@ -639,8 +639,14 @@ class MainWindow(QWidget, Ui_MainWindow):
                 bin_kernel = 5
             elif bin_kernel == '7x7':
                 bin_kernel = 7
-            else:
+            elif bin_kernel == '9x9':
                 bin_kernel = 9
+            elif bin_kernel == '15x15':
+                bin_kernel = 15
+            elif bin_kernel == '21x21':
+                bin_kernel = 21
+            else:
+                bin_kernel = 31
             # Execute spatial filter with selected kernel size
             self.data_filt = filter_spatial_stack(self.data_filt, bin_kernel)
             bin_timeend = time.process_time()
