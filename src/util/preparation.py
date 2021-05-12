@@ -105,19 +105,25 @@ def open_stack(source, meta=None):
        """
     # Check parameter types
     if type(source) not in [str]:
-        raise TypeError('Required "source" ' + source + ' parameter must be a string')
+        raise TypeError(
+            'Required "source" ' + source + ' parameter must be a string')
     if meta and (type(meta) not in [str]):
-        raise TypeError('Optional "meta" ' + meta + ' parameter must be a string')
+        raise TypeError(
+            'Optional "meta" ' + meta + ' parameter must be a string')
 
     # Check validity
     # Make sure the directory, source file, and optional meta file exists
     if not os.path.isdir(os.path.split(source)[0]):
-        raise FileNotFoundError('Required directory ' + os.path.split(source)[0]
-                                + ' is not a directory or does not exist.')
+        raise FileNotFoundError(
+            'Required directory ' + os.path.split(source)[0]
+            + ' is not a directory or does not exist.')
     if not os.path.isfile(source):
-        raise FileNotFoundError('Required "source" ' + source + ' is not a file or does not exist.')
+        raise FileNotFoundError(
+            'Required "source" ' + source
+            + ' is not a file or does not exist.')
     if meta and not os.path.isfile(meta):
-        raise FileNotFoundError('Optional "meta" ' + meta + ' is not a file or does not exist.')
+        raise FileNotFoundError(
+            'Optional "meta" ' + meta + ' is not a file or does not exist.')
     # If a .pcoraw file, convert to .tiff
     f_purepath = PurePath(source)
     f_extension = f_purepath.suffix
@@ -131,8 +137,8 @@ def open_stack(source, meta=None):
     # Open the file
     # file_source = open(source, 'rb')
     # tags = exifread.process_file(file)  # Read EXIF data
-    stack = volread(source)  # Read image data, closes the file after reading
-    stack = img_as_uint(stack)  # Read image data, closes the file after reading
+    stack = volread(source)  # Read image data, closes the file after read
+    stack = img_as_uint(stack)  # Read image data, closes the file after read
     if meta:
         file_meta = open(meta)
         meta = file_meta.read()
@@ -306,7 +312,7 @@ def mask_generate(frame_in, mask_type='Otsu_global', strict=(3, 5)):
     elif mask_type == 'Mean':
         # Good for ___, but __
         thresh = threshold_mean(frame_in)
-        binary_global = frame_in <= thresh
+        binary_global = frame_in >= thresh
         mask = binary_global
         frame_out[mask] = 0
 
@@ -366,7 +372,7 @@ def mask_generate(frame_in, mask_type='Otsu_global', strict=(3, 5)):
     return frame_out, mask, markers
 
 
-def mask_apply(stack_in, mask):
+def mask_apply(stack_in, mask, invert):
     """Apply a binary mask to segment a stack (3-D array, TYX) of grayscale optical data.
 
        Parameters
@@ -375,6 +381,8 @@ def mask_apply(stack_in, mask):
             A 3-D array (T, Y, X) of optical data, dtype : uint16 or float
        mask : ndarray
             A binary 2-D array (Y, X) to mask optical data, dtype : np.bool_
+       invert : int
+            The currentIndex from the voltage/calcium drop down
 
        Returns
        -------
@@ -402,13 +410,17 @@ def mask_apply(stack_in, mask):
     # if (mask.shape[0] is not frame_0.shape[0]) or (mask.shape[1] is not frame_0.shape[1]):
     if mask.shape != frame_0.shape:
         raise ValueError('Mask shape must be the same as the stack frames:'
-                         '\nMask:\t{}\nFrame:\t{}'.format(mask.shape, frame_0.shape))
+                         '\nMask:\t{}\nFrame:\t{}'.format(
+                             mask.shape, frame_0.shape))
 
     stack_out = np.empty_like(stack_in)
 
     for i_frame, frame in enumerate(stack_in):
         frame_out = frame.copy()
-        frame_out[mask] = 0
+        if invert == 0:
+            frame_out[mask] = 0
+        else:
+            frame_out[~mask] = 0
         stack_out[i_frame] = frame_out
 
     return stack_out

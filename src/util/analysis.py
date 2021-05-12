@@ -275,6 +275,8 @@ def oap_peak_calc(signal_in, start_ind, end_ind, amp_thresh, fps):
         peak_ind[n] = np.argmax(signal_in[peak_win])+peak_win[0]
     # Check peak separation, remove any peaks at rates > 500 bpm (i.e., cycle
     # length < 120 ms)
+    # !!! Changed to 0.05 or 50 ms for purposes of testing, pending actualy
+    # sampling rate information for guinea pig data !!!
     peak_sep = peak_ind[1:]-peak_ind[:-1]
     rm = [n for n in np.arange(0, len(peak_sep)) if peak_sep[n]*1/fps < 0.120]
     peak_ind = np.delete(peak_ind, rm)
@@ -454,8 +456,9 @@ def tau_calc(signal_in, fps, peak_ind, diast_ind, end_ind):
 
 
 def ensemble_xlsx_print(file_name, signal_time, ind_analyze, data_oap, act_ind,
-                        peak_ind, tau_fall, apd_val_30, apd_val_80,
-                        apd_val_tri, d_f0, f1_f0):
+                        peak_ind, tau_fall, perc_apd_01, apd_val_01,
+                        perc_apd_02, apd_val_02, apd_val_tri, d_f0, f1_f0,
+                        image_type):
     """Prints ensemble apd analysis results to a spreadsheet
 
         Parameters
@@ -472,10 +475,10 @@ def ensemble_xlsx_print(file_name, signal_time, ind_analyze, data_oap, act_ind,
             Index that denotes the peaks of the oaps in each signal
         tau_fall : float
             Rate of exponential decay that fits repolarization
-        apd_val_30 : float
-            Time to reach 30% peak OAP amplitude
-        apd_val_80 : float
-            Time to reach 80% peak OAP amplitude
+        apd_val_01 : float
+            Time to reach % peak OAP amplitude for first input
+        apd_val_02 : float
+            Time to reach % peak OAP amplitude for second input
         apd_val_tri : float
             Triangulation of APD30 and APD80
         d_f0 : float
@@ -495,6 +498,13 @@ def ensemble_xlsx_print(file_name, signal_time, ind_analyze, data_oap, act_ind,
     worksheet = workbook.add_worksheet('APD_Data')
     # Grab the greatest number of peaks in the selected signals
     peak_num = max([len(k) for k in peak_ind])
+    # Grab image type
+    if image_type == 1:
+        # Set up for calcium
+        im_str = 'C'
+    else:
+        # Set up for voltage
+        im_str = ''
     # Create a loop for writing each data point
     for idx, coor in enumerate(ind_analyze):
         # Calculate a row value
@@ -506,9 +516,11 @@ def ensemble_xlsx_print(file_name, signal_time, ind_analyze, data_oap, act_ind,
         worksheet.write(row+1, 0, 'ActTime (s)', bold)
         worksheet.write(row+1, 1, 'Vmax', bold)
         worksheet.write(row+1, 2, 'TauFall', bold)
-        worksheet.write(row+1, 3, 'APD30 (s)', bold)
-        worksheet.write(row+1, 4, 'APD80 (s)', bold)
-        worksheet.write(row+1, 5, 'APDTri (s)', bold)
+        worksheet.write(row+1, 3, '{}APD{} (s)'.format(
+            im_str, int(round(perc_apd_01*100))), bold)
+        worksheet.write(row+1, 4, '{}APD{} (s)'.format(
+            im_str, int(round(perc_apd_02*100))), bold)
+        worksheet.write(row+1, 5, '{}APDTri (s)'.format(im_str), bold)
         worksheet.write(row+1, 6, 'D_F0', bold)
         worksheet.write(row+1, 7, 'F1_F0', bold)
         worksheet.write(row+1, 8, 'CL (s)', bold)
@@ -517,8 +529,8 @@ def ensemble_xlsx_print(file_name, signal_time, ind_analyze, data_oap, act_ind,
             worksheet.write(row+n+2, 0, signal_time[peak_ind[idx][n].item()])
             worksheet.write(row+n+2, 1, data_oap[idx][peak_ind[idx][n]].item())
             worksheet.write(row+n+2, 2, tau_fall[idx][n].item())
-            worksheet.write(row+n+2, 3, apd_val_30[idx][n].item())
-            worksheet.write(row+n+2, 4, apd_val_80[idx][n].item())
+            worksheet.write(row+n+2, 3, apd_val_01[idx][n].item())
+            worksheet.write(row+n+2, 4, apd_val_02[idx][n].item())
             worksheet.write(row+n+2, 5, apd_val_tri[idx][n].item())
             worksheet.write(row+n+2, 6, d_f0[idx][n].item())
             worksheet.write(row+n+2, 7, f1_f0[idx][n].item())
@@ -531,8 +543,8 @@ def ensemble_xlsx_print(file_name, signal_time, ind_analyze, data_oap, act_ind,
         worksheet.write(ave_row, 1, np.average(
             data_oap[idx][peak_ind[idx]]).item())
         worksheet.write(ave_row, 2, np.average(tau_fall[idx]).item())
-        worksheet.write(ave_row, 3, np.average(apd_val_30[idx]).item())
-        worksheet.write(ave_row, 4, np.average(apd_val_80[idx]).item())
+        worksheet.write(ave_row, 3, np.average(apd_val_01[idx]).item())
+        worksheet.write(ave_row, 4, np.average(apd_val_02[idx]).item())
         worksheet.write(ave_row, 5, np.average(apd_val_tri[idx]).item())
         worksheet.write(ave_row, 6, np.average(d_f0[idx]).item())
         worksheet.write(ave_row, 7, np.average(f1_f0[idx]).item())
@@ -545,8 +557,8 @@ def ensemble_xlsx_print(file_name, signal_time, ind_analyze, data_oap, act_ind,
         worksheet.write(std_row, 1, np.std(
             data_oap[idx][peak_ind[idx]]).item())
         worksheet.write(std_row, 2, np.std(tau_fall[idx]).item())
-        worksheet.write(std_row, 3, np.std(apd_val_30[idx]).item())
-        worksheet.write(std_row, 4, np.std(apd_val_80[idx]).item())
+        worksheet.write(std_row, 3, np.std(apd_val_01[idx]).item())
+        worksheet.write(std_row, 4, np.std(apd_val_02[idx]).item())
         worksheet.write(std_row, 5, np.std(apd_val_tri[idx]).item())
         worksheet.write(std_row, 6, np.std(d_f0[idx]).item())
         worksheet.write(std_row, 7, np.std(f1_f0[idx]).item())

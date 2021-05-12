@@ -218,7 +218,8 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.start_time_edit.setText('')
         self.end_time_edit.setText('')
         self.max_apd_edit.setText('')
-        self.perc_apd_edit.setText('')
+        self.perc_apd_edit_01.setText('')
+        self.perc_apd_edit_02.setText('')
         self.axes_end_time_edit.setText('')
         self.axes_start_time_edit.setText('')
         # Update the axes
@@ -292,8 +293,10 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.max_apd_edit.setEnabled(False)
         self.max_val_label.setEnabled(False)
         self.max_val_edit.setEnabled(False)
-        self.perc_apd_label.setEnabled(False)
-        self.perc_apd_edit.setEnabled(False)
+        self.perc_apd_label_01.setEnabled(False)
+        self.perc_apd_edit_01.setEnabled(False)
+        self.perc_apd_label_02.setEnabled(False)
+        self.perc_apd_edit_02.setEnabled(False)
         # Check the check box
         for n in np.arange(1, len(self.signal_toggle)):
             checkboxname = 'ensemble_cb_0{}'.format(n)
@@ -397,19 +400,32 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.end_time_edit.setEnabled(True)
             self.map_pushbutton.setEnabled(True)
             if self.analysis_drop.currentIndex() == 1:
+                self.max_val_label.setEnabled(False)
+                self.max_val_edit.setEnabled(False)
                 self.max_apd_label.setEnabled(True)
                 self.max_apd_edit.setEnabled(True)
+                self.perc_apd_label_01.setEnabled(True)
+                self.perc_apd_edit_01.setEnabled(True)
+                self.perc_apd_label_02.setEnabled(False)
+                self.perc_apd_edit_02.setEnabled(False)
+            elif self.analysis_drop.currentIndex() == 2:
                 self.max_val_label.setEnabled(True)
                 self.max_val_edit.setEnabled(True)
-                self.perc_apd_label.setEnabled(True)
-                self.perc_apd_edit.setEnabled(True)
+                self.max_apd_label.setEnabled(True)
+                self.max_apd_edit.setEnabled(True)
+                self.perc_apd_label_01.setEnabled(True)
+                self.perc_apd_edit_01.setEnabled(True)
+                self.perc_apd_label_02.setEnabled(True)
+                self.perc_apd_edit_02.setEnabled(True)
             else:
                 self.max_apd_label.setEnabled(False)
                 self.max_apd_edit.setEnabled(False)
                 self.max_val_label.setEnabled(False)
                 self.max_val_edit.setEnabled(False)
-                self.perc_apd_label.setEnabled(False)
-                self.perc_apd_edit.setEnabled(False)
+                self.perc_apd_label_01.setEnabled(False)
+                self.perc_apd_edit_01.setEnabled(False)
+                self.perc_apd_label_02.setEnabled(False)
+                self.perc_apd_edit_02.setEnabled(False)
             # Activate axes controls
             self.axes_start_time_label.setEnabled(True)
             self.axes_start_time_edit.setEnabled(True)
@@ -501,9 +517,12 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.max_apd_edit.setText('')
             self.max_val_label.setEnabled(False)
             self.max_val_edit.setEnabled(False)
-            self.perc_apd_label.setEnabled(False)
-            self.perc_apd_edit.setEnabled(False)
-            self.perc_apd_edit.setText('')
+            self.perc_apd_label_01.setEnabled(False)
+            self.perc_apd_edit_01.setEnabled(False)
+            self.perc_apd_label_02.setEnabled(False)
+            self.perc_apd_edit_02.setEnabled(False)
+            self.perc_apd_edit_01.setText('')
+            self.perc_apd_edit_02.setText('')
             # Disable Movie and Signal Tools
             self.signal_select_button.setEnabled(False)
             self.movie_scroll_obj.setEnabled(False)
@@ -533,7 +552,8 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.start_time_edit.setText('')
             self.end_time_edit.setText('')
             self.max_apd_edit.setText('')
-            self.perc_apd_edit.setText('')
+            self.perc_apd_edit_01.setText('')
+            self.perc_apd_edit_02.setText('')
             self.axes_end_time_edit.setText('')
             self.axes_start_time_edit.setText('')
             # Activate Properties Tools
@@ -601,7 +621,9 @@ class MainWindow(QWidget, Ui_MainWindow):
             frame_out, self.mask, markers = mask_generate(
                 self.data_filt[0], rm_method, (rm_dark, rm_light))
             # Apply the mask for background removal
-            self.data_filt = mask_apply(self.data_filt, self.mask)
+            self.data_filt = mask_apply(self.data_filt,
+                                        self.mask,
+                                        self.image_type_drop.currentIndex())
             rm_bkgd_timeend = time.process_time()
             print(
                 f'Remove Background Time: {rm_bkgd_timeend-rm_bkgd_timestart}')
@@ -617,8 +639,14 @@ class MainWindow(QWidget, Ui_MainWindow):
                 bin_kernel = 5
             elif bin_kernel == '7x7':
                 bin_kernel = 7
-            else:
+            elif bin_kernel == '9x9':
                 bin_kernel = 9
+            elif bin_kernel == '15x15':
+                bin_kernel = 15
+            elif bin_kernel == '21x21':
+                bin_kernel = 21
+            else:
+                bin_kernel = 31
             # Execute spatial filter with selected kernel size
             self.data_filt = filter_spatial_stack(self.data_filt, bin_kernel)
             bin_timeend = time.process_time()
@@ -652,32 +680,89 @@ class MainWindow(QWidget, Ui_MainWindow):
             data_min = np.zeros(data_min_ind.shape)
             # Grab the number of indices in the time axis (axis=0)
             last_ind = self.data_filt.shape[0]
+            # Ignore pixels that have been masked out
+            if self.image_type_drop.currentIndex() == 0:
+                mask = ~self.mask
+            else:
+                mask = self.mask
             # Step through the data
             for n in np.arange(0, self.data_filt.shape[1]):
                 for m in np.arange(0, self.data_filt.shape[2]):
-                    # Ignore pixels that have been masked out
-                    if not self.mask[n, m]:
+                    # Grab a region of indices around the signal minimum
+                    if mask[n, m]:
+                        data_min[n, m] = self.data_filt[
+                            data_min_ind[n, m], n, m]
                         # Check for the leading edge case
-                        if data_min_ind[n, m]-10 < 0:
-                            data_min[n, m] = np.mean(
-                                self.data_filt[0:22, n, m])
+                        if data_min_ind[n, m]-2 < 0:
+                            data_seg = self.data_filt[0:6, n, m]
+                            '''data_min[n, m] = np.mean(
+                                self.data_filt[0:6, n, m])'''
                         # Check for the trailing edge case
-                        elif data_min_ind[n, m]+11 > last_ind:
-                            data_min[n, m] = np.mean(
-                                self.data_filt[last_ind-21:last_ind, n, m])
+                        elif data_min_ind[n, m]+2 > last_ind:
+                            data_seg = self.data_filt[
+                                last_ind-4:last_ind+1, n, m]
+                            '''data_min[n, m] = np.mean(
+                                self.data_filt[last_ind-4:last_ind+1, n, m])'''
                         # Run assuming all indices are within time indices
                         else:
-                            data_min[n, m] = np.mean(
+                            data_seg = self.data_filt[
+                                data_min_ind[n, m]-2:data_min_ind[n, m]+2,
+                                n,
+                                m]
+                        '''data_min[n, m] = np.mean(
                                 self.data_filt[
-                                    data_min_ind[n, m]-10:
-                                        data_min_ind[n, m]+11,
-                                        n, m])
-            # Find max amplitude of each signal
+                                    data_min_ind[n, m]-2:
+                                        data_min_ind[n, m]+2,
+                                        n, m])'''
+                        # Grab all values less than the maximum of this segment
+                        seg_bool = self.data_filt[:, n, m] < max(data_seg)
+                        # Create a vector of the index values of the signal
+                        ind = np.arange(0, self.data_filt.shape[0])
+                        # Pull out all of the low value chunks
+                        ind = ind[seg_bool]
+                        # Find the points of separation in the chunks
+                        # (i.e., index steps > 1)
+                        ind_seg = ind[1:] - ind[0:len(ind)-1]
+                        ind_seg = np.append(ind_seg, 1)
+                        # print(f'{n} x {m} = {mask[n, m]}')
+                        ind_sep = ind[ind_seg != 1]
+                        # Create a vector to step through low value chunks
+                        ind_sep = np.insert(ind_sep, 0, 0)
+                        # Preallocate variable for the min values of each chunk
+                        test_min_all = np.zeros(len(ind_sep)-1)
+                        # Step through each chunk extracting the minimum value
+                        for x in np.arange(0, len(ind_sep)-1):
+                            # print(f'n: {n}')
+                            # print(f'm: {m}')
+                            # print(f'Mask: {mask[n, m]}')
+                            seg = self.data_filt[
+                                ind[ind_sep[x]:ind_sep[x+1]+1], n, m]
+                            if seg.size == 0:
+                                test_min_all[x] = np.nan
+                            else:
+                                test_min_all[x] = np.min(seg)
+                        test_min_all = np.delete(
+                            test_min_all,
+                            [i for i, x in enumerate(np.isnan(test_min_all)) if x])
+                        '''test_min_all[x] = np.min(
+                        self.data_filt[ind[ind_sep[x]:ind_sep[x+1]+1],
+                                                   n,
+                                                   m])'''
+                        # Calculate the average minimum
+                        if test_min_all.size == 0:
+                            continue
+                        else:
+                            data_min[n, m] = np.mean(test_min_all)
+            # Baseline the signals to near zero using the average minimum
+            self.data_filt = self.data_filt - data_min
+            # Normalize using the maximum value of the signal
+            self.data_filt = self.data_filt/np.amax(self.data_filt, axis=0)
+            '''# Find max amplitude of each signal
             data_diff = np.amax(self.data_filt, axis=0) - data_min
             # Baseline the data
             self.data_filt = self.data_filt-data_min
             # Normalize via broadcasting
-            self.data_filt = self.data_filt/data_diff
+            self.data_filt = self.data_filt/data_diff'''
             # Set normalization flag
             self.norm_flag = 1
             normalize_timeend = time.process_time()
@@ -706,9 +791,13 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.max_val_label.setEnabled(False)
             self.max_val_edit.setEnabled(False)
             self.max_val_edit.setText('')
-            self.perc_apd_label.setEnabled(False)
-            self.perc_apd_edit.setEnabled(False)
-            self.perc_apd_edit.setText('')
+            self.perc_apd_label_01.setEnabled(False)
+            self.perc_apd_edit_01.setEnabled(False)
+            self.perc_apd_label_02.setEnabled(False)
+            self.perc_apd_edit_02.setEnabled(False)
+            self.perc_apd_edit_01.setText('')
+            self.perc_apd_edit_02.setText('')
+            self.analysis_y_lim = False
             self.ensemble_cb_01.setEnabled(False)
             self.ensemble_cb_02.setEnabled(False)
             self.ensemble_cb_03.setEnabled(False)
@@ -717,12 +806,15 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Enable the APD tools
             self.max_apd_label.setEnabled(True)
             self.max_apd_edit.setEnabled(True)
-            self.perc_apd_label.setEnabled(True)
-            self.perc_apd_edit.setEnabled(True)
+            self.perc_apd_label_01.setEnabled(True)
+            self.perc_apd_edit_01.setEnabled(True)
+            self.perc_apd_label_02.setEnabled(False)
+            self.perc_apd_edit_02.setEnabled(False)
             # Disable amplitude and checkboxes
             self.max_val_label.setEnabled(False)
             self.max_val_edit.setEnabled(False)
             self.max_val_edit.setText('')
+            self.analysis_y_lim = False
             self.ensemble_cb_01.setEnabled(False)
             self.ensemble_cb_02.setEnabled(False)
             self.ensemble_cb_03.setEnabled(False)
@@ -733,15 +825,20 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.max_apd_edit.setText('')
             self.max_val_label.setEnabled(True)
             self.max_val_edit.setEnabled(True)
-            self.perc_apd_label.setEnabled(False)
-            self.perc_apd_edit.setEnabled(False)
-            self.perc_apd_edit.setText('')
+            self.perc_apd_label_01.setEnabled(True)
+            self.perc_apd_edit_01.setEnabled(True)
+            self.perc_apd_label_02.setEnabled(True)
+            self.perc_apd_edit_02.setEnabled(True)
+            self.perc_apd_edit_01.setText('')
+            self.perc_apd_edit_02.setText('')
             # Enable the checkboxes next to populated signal axes
             for cnt, n in enumerate(self.signal_toggle):
                 if n == 1:
                     checkboxname = 'ensemble_cb_0{}'.format(cnt+1)
                     checkbox = getattr(self, checkboxname)
                     checkbox.setEnabled(True)
+        # Update the axes accordingly
+        self.update_axes()
 
     def run_map(self):
         # Pass the function to execute
@@ -761,6 +858,11 @@ class MainWindow(QWidget, Ui_MainWindow):
         # Find the time index value to which the top entry is closest
         end_ind = abs(self.signal_time-end_time)
         end_ind = np.argmin(end_ind)
+        # Grab masking information
+        if self.image_type_drop.currentIndex() == 0:
+            transp = ~self.mask
+        else:
+            transp = self.mask
         # Calculate activation
         self.act_ind = calc_tran_activation(
             self.data_filt, start_ind, end_ind)
@@ -771,7 +873,10 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Generate a map of the activation times
             self.act_map = plt.figure()
             axes_act_map = self.act_map.add_axes([0.05, 0.1, 0.8, 0.8])
-            transp = ~self.mask
+            '''if self.image_type_drop.currentIndex() == 0:
+                transp = ~self.mask
+            else:
+                transp = self.mask'''
             transp = transp.astype(float)
             axes_act_map.imshow(self.data[0], cmap='gray')
             axes_act_map.imshow(self.act_val, alpha=transp, vmin=0,
@@ -787,27 +892,26 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Grab the maximum APD value
             final_apd = float(self.max_apd_edit.text())
             # Find the associated time index
-            max_apd_ind = abs(self.signal_time-final_apd)
+            max_apd_ind = abs(self.signal_time-(final_apd+start_time))
             max_apd_ind = np.argmin(max_apd_ind)
             # Grab the percent APD
-            percent_apd = float(self.perc_apd_edit.text())
+            percent_apd = float(self.perc_apd_edit_01.text())
             # Find the maximum amplitude of the action potential
             max_amp_ind = np.argmax(
                 self.data_filt[
-                    start_ind:start_ind+max_apd_ind, :, :], axis=0
+                    start_ind:max_apd_ind, :, :], axis=0
                 )+start_ind
             # Preallocate variable for percent apd index and value
             apd_ind = np.zeros(max_amp_ind.shape)
-            self.apd_val = apd_ind
+            self.apd_val = np.zeros(max_amp_ind.shape)
             # Step through the data
             for n in np.arange(0, self.data_filt.shape[1]):
                 for m in np.arange(0, self.data_filt.shape[2]):
                     # Ignore pixels that have been masked out
-                    if not self.mask[n, m]:
+                    if transp[n, m]:
                         # Grab the data segment between max amp and end
                         tmp = self.data_filt[
-                            max_amp_ind[n, m]:start_ind +
-                            max_apd_ind, n, m]
+                            max_amp_ind[n, m]:max_apd_ind, n, m]
                         # Find the minimum to find the index closest to
                         # desired apd percent
                         apd_ind[n, m] = np.argmin(
@@ -822,9 +926,9 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Generate a map of the action potential durations
             self.apd_map = plt.figure()
             axes_apd_map = self.apd_map.add_axes([0.05, 0.1, 0.8, 0.8])
-            transp = ~self.mask
+            '''transp = ~self.mask'''
             transp = transp.astype(float)
-            top = max_apd_ind*(1/self.data_fps)
+            top = self.signal_time[max_apd_ind]-self.signal_time[start_ind]
             axes_apd_map.imshow(self.data[0], cmap='gray')
             axes_apd_map.imshow(self.apd_val, alpha=transp, vmin=0,
                                 vmax=top, cmap='jet')
@@ -835,8 +939,10 @@ class MainWindow(QWidget, Ui_MainWindow):
                 cax=cax, format='%.3f')
         # Generate data for succession of APDs
         if analysis_type == 2:
-            # Grab the start and end time, amplitude threshold, and signals
+            # Grab the amplitude threshold, apd values and signals
             amp_thresh = float(self.max_val_edit.text())
+            apd_input_01 = float(self.perc_apd_edit_01.text())
+            apd_input_02 = float(self.perc_apd_edit_02.text())
             # Identify which signals have been selected for calculation
             ensemble_list = [self.ensemble_cb_01.isChecked(),
                              self.ensemble_cb_02.isChecked(),
@@ -848,8 +954,8 @@ class MainWindow(QWidget, Ui_MainWindow):
             peak_amp = []
             diast_ind = []
             act_ind = []
-            apd_val_30 = []
-            apd_val_80 = []
+            apd_val_01 = []
+            apd_val_02 = []
             apd_val_tri = []
             tau_fall = []
             f1_f0 = []
@@ -857,8 +963,8 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Iterate through the code
             for idx in np.arange(len(ind_analyze)):
                 data_oap.append(
-                    self.data_filt[:, self.signal_coord[idx][1],
-                                   self.signal_coord[idx][0]])
+                    self.data_filt[:, ind_analyze[idx][1],
+                                   ind_analyze[idx][0]])
                 # Calculate peak indices
                 peak_ind.append(oap_peak_calc(data_oap[idx], start_ind,
                                               end_ind, amp_thresh,
@@ -872,19 +978,19 @@ class MainWindow(QWidget, Ui_MainWindow):
                 act_ind.append(act_ind_calc(data_oap[idx], diast_ind[idx],
                                             peak_ind[idx]))
                 # Calculate the APD30
-                apd_ind_30 = apd_ind_calc(data_oap[idx], end_ind,
+                apd_ind_01 = apd_ind_calc(data_oap[idx], end_ind,
                                           diast_ind[idx], peak_ind[idx],
-                                          0.3)
-                apd_val_30.append(self.signal_time[apd_ind_30] -
+                                          apd_input_01)
+                apd_val_01.append(self.signal_time[apd_ind_01] -
                                   self.signal_time[act_ind[idx]])
                 # Calculate APD80
-                apd_ind_80 = apd_ind_calc(data_oap[idx], end_ind,
+                apd_ind_02 = apd_ind_calc(data_oap[idx], end_ind,
                                           diast_ind[idx], peak_ind[idx],
-                                          0.8)
-                apd_val_80.append(self.signal_time[apd_ind_80] -
+                                          apd_input_02)
+                apd_val_02.append(self.signal_time[apd_ind_02] -
                                   self.signal_time[act_ind[idx]])
                 # Calculate APD triangulation
-                apd_val_tri.append(apd_val_80[idx]-apd_val_30[idx])
+                apd_val_tri.append(apd_val_02[idx]-apd_val_01[idx])
                 # Calculate Tau Fall
                 tau_fall.append(tau_calc(data_oap[idx], self.data_fps,
                                          peak_ind[idx], diast_ind[idx],
@@ -899,24 +1005,25 @@ class MainWindow(QWidget, Ui_MainWindow):
                 # Calculate the baseline fluorescence as the average of the
                 # first 10 points
                 f0 = np.average(data[:11,
-                                     self.signal_coord[idx][1],
-                                     self.signal_coord[idx][0]])
+                                     ind_analyze[idx][1],
+                                     ind_analyze[idx][0]])
                 # Calculate F1/F0 fluorescent ratio
                 f1_f0.append(data[peak_ind[idx],
-                                  self.signal_coord[idx][1],
-                                  self.signal_coord[idx][0]]/f0)
+                                  ind_analyze[idx][1],
+                                  ind_analyze[idx][0]]/f0)
                 # Calculate D/F0 fluorescent ratio
                 d_f0.append(data[diast_ind[idx],
-                                 self.signal_coord[idx][1],
-                                 self.signal_coord[idx][0]]/f0)
+                                 ind_analyze[idx][1],
+                                 ind_analyze[idx][0]]/f0)
             # Open dialogue box for selecting the data directory
             save_fname = QFileDialog.getSaveFileName(
                 self, "Save File", os.getcwd(), "Excel Files (*.xlsx)")
             # Write results to a spreadsheet
             ensemble_xlsx_print(save_fname[0], self.signal_time, ind_analyze,
                                 data_oap, act_ind, peak_ind, tau_fall,
-                                apd_val_30, apd_val_80, apd_val_tri, d_f0,
-                                f1_f0)
+                                apd_input_01, apd_val_01, apd_input_02,
+                                apd_val_02, apd_val_tri, d_f0, f1_f0,
+                                self.image_type_drop.currentIndex())
 
     def signal_select(self):
         # Create placeholders for the x and y coordinates
@@ -1050,6 +1157,7 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.anal_end_ind = []
             # Set boolean to false so it no longer updates
             self.analysis_top_lim = False
+        # Grab new max amplitude value and update entry to actual value
         if self.max_val_edit.text():
             # Set boolean to true to signal axes updates accordingly
             self.analysis_y_lim = True
@@ -1324,7 +1432,10 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Get the current value of the movie slider
             sig_id = self.movie_scroll_obj.value()
             # Create the transparency mask
-            mask = ~self.mask
+            if self.image_type_drop.currentIndex() == 0:
+                mask = ~self.mask
+            else:
+                mask = self.mask
             thresh = self.data_filt[sig_id, :, :] > 0.3
             transp = mask == thresh
             transp = transp.astype(float)
