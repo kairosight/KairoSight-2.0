@@ -4,6 +4,8 @@ import statistics
 import sys
 
 import numpy as np
+from numpy.polynomial import Polynomial
+from numpy.polynomial.polynomial import polyval
 from scipy.interpolate import LSQUnivariateSpline
 from scipy.signal import find_peaks, correlate, filtfilt, kaiserord, firwin,\
     butter, convolve2d, remez
@@ -668,15 +670,15 @@ def filter_drift(signal_in, mask, drift_order=1):
     # Iterate through the data removing drift from all non-masked out pixels
     for n in np.arange(0, signal_in.shape[1]):
         for m in np.arange(0, signal_in.shape[2]):
-            if not mask[n, m]:
+            if mask[n, m]:
                 # Create vector of x-values along which to fit the curve
                 sig_x = np.arange(0, len(signal_in[:, n, m]))
                 # Least squares polynomial fit of specified order
-                z = np.polyfit(sig_x, signal_in[:, n, m], drift_order)
-                # Conversion of fit to a polynomial class
-                p = np.poly1d(z)
+                z = Polynomial.fit(sig_x, signal_in[:, n, m], drift_order)
+                '''# Conversion of fit to a polynomial class
+                p = np.poly1d(z)'''
                 # Evaluation of fit polynomial
-                drift_rm = np.polyval(p, sig_x)
+                drift_rm = polyval(sig_x, z.convert().coef)
                 # Remove drift
                 signal_out[:, n, m] = signal_in[:, n, m]-drift_rm
     # Return the results
