@@ -273,12 +273,47 @@ def oap_peak_calc(signal_in, start_ind, end_ind, amp_thresh, fps):
             peak_win = sig_ind[chop_ind[n]:chop_ind[n+1]]+start_ind
         # Calculate the index of the peak
         peak_ind[n] = np.argmax(signal_in[peak_win])+peak_win[0]
+    # convert the peak indices from floats to ints
+    peak_ind = peak_ind.astype(int)
     # Check peak separation, remove any peaks at rates > 500 bpm (i.e., cycle
     # length < 120 ms)
-    # !!! Changed to 0.05 or 50 ms for purposes of testing, pending actualy
-    # sampling rate information for guinea pig data !!!
     peak_sep = peak_ind[1:]-peak_ind[:-1]
-    rm = [n for n in np.arange(0, len(peak_sep)) if peak_sep[n]*1/fps < 0.120]
+    same_peak = [
+        n for n in np.arange(0, len(peak_sep)) if peak_sep[n]*1/fps < 0.120]
+    rm = np.array(0)
+    ind_tracker = 0
+    while ind_tracker < len(same_peak):
+        # Grab the next supra threshold value
+        peak_group = same_peak[ind_tracker]
+        # Establish the peak group counter
+        cnt = 1
+        # Group indices on the same peak
+        while True:
+            if peak_sep[same_peak[ind_tracker]] == peak_sep[-1]:
+                cnt -= 1
+                break
+            elif (same_peak[ind_tracker]+cnt) == same_peak[ind_tracker+cnt]:
+                peak_group = np.append(peak_group, same_peak[ind_tracker+cnt])
+                cnt += 1
+            else:
+                cnt -= 1
+                break
+        # Add the extra peak
+        if peak_group.size == 1:
+            peak_group = np.append(peak_group, peak_group+1)
+        else:
+            peak_group = np.append(peak_group, peak_group[-1]+1)
+        # Get the amplitude values
+        group_amp = signal_in[peak_ind[peak_group]]
+        # Remove the maximum
+        keep = np.argmax(group_amp)
+        remove = np.delete(peak_group, keep)
+        rm = np.append(rm, remove)
+        # Update the index tracker
+        ind_tracker = ind_tracker+1+cnt
+    # Remove the initial value used to create the numpy array
+    rm = np.delete(rm, 0)
+    # Remove all other indices from the peaks indices array
     peak_ind = np.delete(peak_ind, rm)
     # Output the indices of the peaks
     return peak_ind.astype(int)

@@ -598,7 +598,7 @@ def filter_temporal(signal_in, sample_rate, mask, freq_cutoff=100.0,
     n_order = 0
     if type(filter_order) is int:
         # Calculate filter coefficients using Remez exchange algorithm
-        b = remez(filter_order, [0.5, freq_cutoff, freq_cutoff*1.25,
+        b = remez(filter_order, [0.5, freq_cutoff, freq_cutoff*1.1,
                                  sample_rate/2.0], [1, 0], Hz=sample_rate)
         a = 1.0
         # Reshape the data to 2D array with signals in the columns
