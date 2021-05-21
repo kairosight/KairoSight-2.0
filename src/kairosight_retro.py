@@ -620,10 +620,20 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Generate the mask for background removal using original data
             frame_out, self.mask, markers = mask_generate(
                 self.data_filt[0], rm_method, (rm_dark, rm_light))
+            # Flip if the signal is voltage
+            if self.image_type_drop.currentIndex() == 0:
+                self.mask = ~self.mask
+            # Look for saturated signals by comparing the first 50 indices to
+            # the first index, if they are all equal the signal is saturated
+            is_sat = sum(
+                self.data_filt[0:50, :, :] == self.data_filt[0, :, :]) == 50
+            # Remove saturated signals from the mask
+            print(self.mask)
+            self.mask[is_sat] = False
             # Apply the mask for background removal
             self.data_filt = mask_apply(self.data_filt,
                                         self.mask,
-                                        self.image_type_drop.currentIndex())
+                                        1)
             rm_bkgd_timeend = time.process_time()
             print(
                 f'Remove Background Time: {rm_bkgd_timeend-rm_bkgd_timestart}')
@@ -657,19 +667,24 @@ class MainWindow(QWidget, Ui_MainWindow):
         if self.filter_checkbox.isChecked():
             filter_timestart = time.process_time()
             # Apply the low pass filter
+            # print(self.filter_upper_edit.text)
             self.data_filt = filter_temporal(
-                self.data_filt, self.data_fps, self.mask, filter_order=100)
+                self.data_filt, self.data_fps, self.mask, filter_order=100,
+                freq_cutoff=float(self.filter_upper_edit.text()))
             filter_timeend = time.process_time()
             print(
                 f'Filter Time: {filter_timeend-filter_timestart}')
 
         # Drift Removal
         if self.drift_checkbox.isChecked():
+            drift_timestart = time.process_time()
             # Grab drift order from dropdown
             drift_order = self.drift_drop.currentIndex()+1
             # Apply drift removal
             self.data_filt = filter_drift(
                 self.data_filt, self.mask, drift_order)
+            drift_timeend = time.process_time()
+            print(f'Drift Time: {drift_timeend-drift_timestart}')
 
         # Normalization
         if self.normalize_checkbox.isChecked():
@@ -681,10 +696,10 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Grab the number of indices in the time axis (axis=0)
             last_ind = self.data_filt.shape[0]
             # Ignore pixels that have been masked out
-            if self.image_type_drop.currentIndex() == 0:
-                mask = ~self.mask
-            else:
-                mask = self.mask
+            # if self.image_type_drop.currentIndex() == 0:
+            mask = self.mask
+            # else:
+            #    mask = ~self.mask
             # Step through the data
             for n in np.arange(0, self.data_filt.shape[1]):
                 for m in np.arange(0, self.data_filt.shape[2]):
@@ -724,19 +739,19 @@ class MainWindow(QWidget, Ui_MainWindow):
                         # (i.e., index steps > 1)
                         ind_seg = ind[1:] - ind[0:len(ind)-1]
                         ind_seg = np.append(ind_seg, 1)
-                        # print(f'{n} x {m} = {mask[n, m]}')
-                        ind_sep = ind[ind_seg != 1]
-                        # Create a vector to step through low value chunks
-                        ind_sep = np.insert(ind_sep, 0, 0)
+                        # Create a vector for the gaps
+                        gap = ind_seg != 1
+                        # Create a vector for the last index in each segment
+                        last = ind[gap]
+                        last = np.append(last, ind[-1])
+                        # Create a vector for the first index in each segment
+                        first = ind[np.roll(gap, 1)]
+                        first = np.insert(first, 0, 0)
                         # Preallocate variable for the min values of each chunk
-                        test_min_all = np.zeros(len(ind_sep)-1)
+                        test_min_all = np.zeros(len(first))
                         # Step through each chunk extracting the minimum value
-                        for x in np.arange(0, len(ind_sep)-1):
-                            # print(f'n: {n}')
-                            # print(f'm: {m}')
-                            # print(f'Mask: {mask[n, m]}')
-                            seg = self.data_filt[
-                                ind[ind_sep[x]:ind_sep[x+1]+1], n, m]
+                        for x in np.arange(0, len(test_min_all)):
+                            seg = self.data_filt[first[x]:last[x]+1, n, m]
                             if seg.size == 0:
                                 test_min_all[x] = np.nan
                             else:
@@ -859,10 +874,10 @@ class MainWindow(QWidget, Ui_MainWindow):
         end_ind = abs(self.signal_time-end_time)
         end_ind = np.argmin(end_ind)
         # Grab masking information
-        if self.image_type_drop.currentIndex() == 0:
+        '''if self.image_type_drop.currentIndex() == 0:
             transp = ~self.mask
-        else:
-            transp = self.mask
+        else:'''
+        transp = self.mask
         # Calculate activation
         self.act_ind = calc_tran_activation(
             self.data_filt, start_ind, end_ind)
@@ -878,7 +893,12 @@ class MainWindow(QWidget, Ui_MainWindow):
             else:
                 transp = self.mask'''
             transp = transp.astype(float)
-            axes_act_map.imshow(self.data[0], cmap='gray')
+            axes_act_map.imshow(self.data[0,
+                                          self.crop_ybound[0]:
+                                              self.crop_ybound[1]+1,
+                                          self.crop_xbound[0]:
+                                              self.crop_xbound[1]+1],
+                                cmap='gray')
             axes_act_map.imshow(self.act_val, alpha=transp, vmin=0,
                                 vmax=max_val, cmap='jet')
             cax = plt.axes([0.87, 0.12, 0.05, 0.76])
@@ -929,7 +949,12 @@ class MainWindow(QWidget, Ui_MainWindow):
             '''transp = ~self.mask'''
             transp = transp.astype(float)
             top = self.signal_time[max_apd_ind]-self.signal_time[start_ind]
-            axes_apd_map.imshow(self.data[0], cmap='gray')
+            axes_apd_map.imshow(self.data[0,
+                                          self.crop_ybound[0]:
+                                              self.crop_ybound[1]+1,
+                                          self.crop_xbound[0]:
+                                              self.crop_xbound[1]+1],
+                                cmap='gray')
             axes_apd_map.imshow(self.apd_val, alpha=transp, vmin=0,
                                 vmax=top, cmap='jet')
             cax = plt.axes([0.87, 0.1, 0.05, 0.8])
@@ -1432,10 +1457,10 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Get the current value of the movie slider
             sig_id = self.movie_scroll_obj.value()
             # Create the transparency mask
-            if self.image_type_drop.currentIndex() == 0:
+            '''if self.image_type_drop.currentIndex() == 0:
                 mask = ~self.mask
-            else:
-                mask = self.mask
+            else:'''
+            mask = self.mask
             thresh = self.data_filt[sig_id, :, :] > 0.3
             transp = mask == thresh
             transp = transp.astype(float)

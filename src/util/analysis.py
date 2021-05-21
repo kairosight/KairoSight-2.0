@@ -250,29 +250,31 @@ def oap_peak_calc(signal_in, start_ind, end_ind, amp_thresh, fps):
             The index of each peak within the specified window
     """
     # Start with grabbing all signal indices above the threshold
-    thresh_ind = signal_in[start_ind:end_ind] > amp_thresh
+    thresh_bool = signal_in[start_ind:end_ind] > amp_thresh
     # Create indices for the oap segment
-    sig_ind = np.arange(0, end_ind-start_ind)
+    sig_ind = np.arange(0, len(thresh_bool))
     # Grab the indices of all points above the amplitude threshold
-    sig_ind = sig_ind[thresh_ind]
+    sig_ind = sig_ind[thresh_bool]+start_ind
     # Find the indices that separate the above threshold segments
     chop_sig = sig_ind[1:]-sig_ind[:-1]
-    tmp = np.arange(0, len(chop_sig))
-    chop_ind = np.append(0, tmp[chop_sig != 1]+1)
-    # Create an empty variable for the peak index values
-    peak_ind = np.empty(len(chop_ind))
+    chop_sig = np.append(chop_sig, 1)
+    # Create a vector for the gaps
+    gap2 = chop_sig != 1
+    # Create a vector for the last index in each segment
+    last2 = sig_ind[gap2]
+    last2 = np.append(last2, sig_ind[-1])
+    # Create a vector for the first index in each segment
+    first2 = sig_ind[np.roll(gap2, 1)]
+    first2 = np.insert(first2, 0, sig_ind[0])
+    # Create a variable for stepping through the segments
+    peak_ind = np.empty(len(first2))
     # Step throught each OAP
-    for n in np.arange(0, len(chop_ind)):
-        # If it's the last one, go to the end of the segment
-        if n == len(chop_ind)-1:
-            # Grab the window of indices with the peak
-            peak_win = sig_ind[chop_ind[n]:]+start_ind
-        # If it's not, go to the next peak
-        else:
-            # Grab the window of indices with the peak
-            peak_win = sig_ind[chop_ind[n]:chop_ind[n+1]]+start_ind
+    for n in np.arange(0, len(first2)):
         # Calculate the index of the peak
-        peak_ind[n] = np.argmax(signal_in[peak_win])+peak_win[0]
+        if first2[n] == last2[n]:
+            peak_ind[n] = signal_in[first2[n]]+first2[n]
+        else:
+            peak_ind[n] = np.argmax(signal_in[first2[n]:last2[n]])+first2[n]
     # convert the peak indices from floats to ints
     peak_ind = peak_ind.astype(int)
     # Check peak separation, remove any peaks at rates > 500 bpm (i.e., cycle
@@ -286,17 +288,18 @@ def oap_peak_calc(signal_in, start_ind, end_ind, amp_thresh, fps):
         # Grab the next supra threshold value
         peak_group = same_peak[ind_tracker]
         # Establish the peak group counter
-        cnt = 1
+        cnt = 0
         # Group indices on the same peak
         while True:
-            if peak_sep[same_peak[ind_tracker]] == peak_sep[-1]:
-                cnt -= 1
+            if same_peak[ind_tracker+cnt] == same_peak[-1]:
                 break
-            elif (same_peak[ind_tracker]+cnt) == same_peak[ind_tracker+cnt]:
-                peak_group = np.append(peak_group, same_peak[ind_tracker+cnt])
+            elif len(same_peak) == 1:
+                break
+            elif same_peak[ind_tracker]+cnt+1 == same_peak[ind_tracker+cnt+1]:
+                peak_group = np.append(
+                    peak_group, same_peak[ind_tracker+cnt+1])
                 cnt += 1
             else:
-                cnt -= 1
                 break
         # Add the extra peak
         if peak_group.size == 1:
@@ -338,7 +341,7 @@ def diast_ind_calc(signal_in, peak_ind):
     # Grab the average cycle length
     aveCL = np.average(peak_ind[1:]-peak_ind[:-1])
     # Grab a percentage of the average cycle length
-    perCL = aveCL*0.1
+    perCL = aveCL*0.5
     # Use percentage of cycle length create search window for max dV2dt
     start_ind_act = np.around(peak_ind-perCL, decimals=0).astype(int)
     # Calculate first and second derivatives
@@ -484,7 +487,7 @@ def tau_calc(signal_in, fps, peak_ind, diast_ind, end_ind):
         decay_time = np.linspace(0, len(decay) * dt, len(decay))
         # Fit the lambda function to the decay
         popt, pcov = opt.curve_fit(decay_func, decay_time, decay,
-                                   p0=[0, 0.01, 1])
+                                   p0=[0, 0.01, 1], maxfev=2000)
         tau_val[n] = 1/popt[1]
     # Output the tau value of the fitted curve
     return tau_val
