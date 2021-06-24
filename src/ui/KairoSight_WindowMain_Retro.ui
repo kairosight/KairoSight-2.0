@@ -575,6 +575,11 @@
            <string>Random Walk</string>
           </property>
          </item>
+         <item>
+          <property name="text">
+           <string>Thresholding</string>
+          </property>
+         </item>
         </widget>
        </item>
       </layout>

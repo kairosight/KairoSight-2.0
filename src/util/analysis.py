@@ -307,9 +307,9 @@ def oap_peak_calc(signal_in, start_ind, end_ind, amp_thresh, fps):
         else:
             peak_group = np.append(peak_group, peak_group[-1]+1)
         # Get the amplitude values
-        group_amp = signal_in[peak_ind[peak_group]]
-        # Remove the maximum
-        keep = np.argmax(group_amp)
+        # group_amp = signal_in[peak_ind[peak_group]]
+        # Keep the first index, remove all others
+        keep = 0
         remove = np.delete(peak_group, keep)
         rm = np.append(rm, remove)
         # Update the index tracker
