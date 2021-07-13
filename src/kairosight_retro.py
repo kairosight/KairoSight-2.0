@@ -615,11 +615,21 @@ class MainWindow(QWidget, Ui_MainWindow):
                 rm_method = 'Otsu_global'
             elif rm_method == 'Random Walk':
                 rm_method = 'Random_walk'
-            rm_dark = int(self.bkgd_dark_edit.text())
+            elif rm_method == 'Thresholding':
+                rm_method = 'Bkgd_thresh'
+            # Grab the thresholding inputs
+            if rm_method == 'Bkgd_thresh':
+                rm_dark = float(self.bkgd_dark_edit.text())
+            else:
+                rm_dark = int(self.bkgd_dark_edit.text())
             rm_light = int(self.bkgd_light_edit.text())
             # Generate the mask for background removal using original data
-            frame_out, self.mask, markers = mask_generate(
-                self.data_filt[0], rm_method, (rm_dark, rm_light))
+            if rm_method == 'Bkgd_thresh':
+                frame_out, self.mask, markers = mask_generate(
+                    self.data_filt, rm_method, (rm_dark, rm_light))
+            else:
+                frame_out, self.mask, markers = mask_generate(
+                    self.data_filt[0], rm_method, (rm_dark, rm_light))
             # Flip if the signal is voltage
             if self.image_type_drop.currentIndex() == 0:
                 self.mask = ~self.mask
@@ -1364,11 +1374,20 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.signal_emit_done = 1
 
     def rm_bkgd_options(self):
-        if self.rm_bkgd_method_drop.currentIndex() == 2:
+        self.bkgd_dark_label.setText('Dark:')
+        self.bkgd_dark_edit.setText('3')
+        self.bkgd_light_label.setText('Light:')
+        self.bkgd_light_edit.setText('5')
+        if self.rm_bkgd_method_drop.currentIndex() >= 2:
             self.bkgd_dark_label.setEnabled(True)
             self.bkgd_dark_edit.setEnabled(True)
             self.bkgd_light_label.setEnabled(True)
             self.bkgd_light_edit.setEnabled(True)
+            if self.rm_bkgd_method_drop.currentIndex() == 3:
+                self.bkgd_dark_label.setText('Percentage:')
+                self.bkgd_dark_edit.setText('0.5')
+                self.bkgd_light_label.setText('Kernel Size: ')
+                self.bkgd_light_edit.setText('2')
         else:
             self.bkgd_dark_label.setEnabled(False)
             self.bkgd_dark_edit.setEnabled(False)
