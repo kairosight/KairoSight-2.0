@@ -67,7 +67,7 @@
      <rect>
       <x>10</x>
       <y>450</y>
-      <width>171</width>
+      <width>161</width>
       <height>243</height>
      </rect>
     </property>
@@ -349,7 +349,7 @@
           <bool>false</bool>
          </property>
          <property name="text">
-          <string>Start Preparation</string>
+          <string>Save Properties</string>
          </property>
         </widget>
        </item>
@@ -469,7 +469,7 @@
      <rect>
       <x>200</x>
       <y>450</y>
-      <width>181</width>
+      <width>171</width>
       <height>271</height>
      </rect>
     </property>
@@ -484,7 +484,7 @@
         </font>
        </property>
        <property name="text">
-        <string>Preparation:</string>
+        <string>Processing:</string>
        </property>
       </widget>
      </item>
@@ -573,6 +573,11 @@
          <item>
           <property name="text">
            <string>Random Walk</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Thresholding</string>
           </property>
          </item>
         </widget>
@@ -1497,6 +1502,38 @@
       </layout>
      </item>
     </layout>
+   </widget>
+   <widget class="QPushButton" name="export_data_button">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>1000</x>
+      <y>665</y>
+      <width>105</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Export Signal Data</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="export_tracings_button">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>1120</x>
+      <y>665</y>
+      <width>120</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Export Signal Tracings</string>
+    </property>
    </widget>
   </widget>
  </widget>

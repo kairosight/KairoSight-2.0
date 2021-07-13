@@ -13,11 +13,13 @@ from skimage.segmentation import random_walker
 # TODO Try Canny edge filter (https://scikit-image.org/docs/dev/auto_examples/segmentation/plot_metrics.html#sphx-glr-auto-examples-segmentation-plot-metrics-py)
 from skimage.exposure import rescale_intensity
 from skimage.measure import label, regionprops
+from skimage.morphology import (opening, flood_fill, square, disk, dilation,
+                                erosion, closing, diamond)
 import cv2
 
 # Constants
 FL_16BIT_MAX = 2 ** 16 - 1  # Maximum intensity value of a 16-bit pixel: 65535
-MASK_TYPES = ['Otsu_global', 'Mean', 'Random_walk', 'best_ever']
+MASK_TYPES = ['Otsu_global', 'Mean', 'Random_walk', 'best_ever', 'Bkgd_thresh']
 MASK_STRICT_MAX = 9
 
 # TODO move "reduce_stack" from test_Map setUps to a preparation as a new
@@ -277,23 +279,28 @@ def mask_generate(frame_in, mask_type='Otsu_global', strict=(3, 5)):
     # Check parameters
     if type(frame_in) is not np.ndarray:
         raise TypeError('Frame type must be an "ndarray"')
-    if len(frame_in.shape) != 2:
-        raise TypeError('Frame must be a 2-D ndarray (Y, X)')
+    '''if len(frame_in.shape) != 2:
+        raise TypeError('Frame must be a 2-D ndarray (Y, X)')'''
     if frame_in.dtype not in [np.uint16, float]:
         raise TypeError('Frame values must either be "np.uint16" or "float"')
-    if type(mask_type) is not str:
         raise TypeError('Filter type must be a "str"')
     if type(strict) is not tuple:
         raise TypeError('Strictness type must be an "tuple"')
     if len(strict) != 2:
         raise TypeError('Strictness length must be 2')
-    if strict[0] > strict[1]:
-        raise TypeError('Strictness for Dark cutoff must be greater than Light cutoff')
-    if strict[0] < 1:
+    if mask_type != 'Bkgd_thresh' and strict[0] > strict[1]:
+        raise TypeError(
+            'Strictness for Dark cutoff must be greater than Light cutoff')
+    if mask_type != 'Bkgd_thresh' and strict[0] < 1:
         raise TypeError('Strictness for Dark cutoff must be greater than 0')
-
+    if mask_type == 'Bkgd_thresh' and strict[0] > 1:
+        raise TypeError(
+            'Strictness for Percentage must be less than 1.')
+    if mask_type == 'Bkgd_thresh' and strict[0] < 0:
+        raise TypeError('Strictness for Percentage must be greater than 0')
     if mask_type not in MASK_TYPES:
-        raise ValueError('Filter type must be one of the following: {}'.format(MASK_TYPES))
+        raise ValueError(
+            'Filter type must be one of the following: {}'.format(MASK_TYPES))
 
     frame_out = frame_in.copy()
     mask = frame_in.copy()
@@ -366,8 +373,46 @@ def mask_generate(frame_in, mask_type='Otsu_global', strict=(3, 5)):
 
         frame_out[largest_mask] = 0
         mask = largest_mask
+    elif mask_type == 'Bkgd_thresh':
+        # Grab the min and max for all signals
+        data_max = frame_in.max(axis=0)
+        data_min = frame_in.min(axis=0)
+        # Calculate the amplitude of signals using min and max values
+        data_range = data_max-data_min
+        # Rearrange the data to enable sorting
+        to_sort = np.reshape(
+            data_range, [1, data_range.shape[0]*data_range.shape[1]])
+        to_sort = np.sort(to_sort, axis=1, )
+        to_sort = np.flip(to_sort)
+        # Grab the amplitude value at the % threshold (i.e., strict[0])
+        range_thresh = to_sort[0, np.int(to_sort.shape[1]*strict[0])]
+        # Use the % threshold amplitude value to generate a mask inclusive of
+        # all pixels above the top % of values
+        thresh_mask = data_range > range_thresh
+        # Create kernels for morphological manipulation of the mask
+        selem_duo = diamond(strict[1])
+        selem_solo = diamond(strict[1]*3)
+        # Close the mask to fill holes
+        thresh_mask = closing(thresh_mask, selem_duo)
+        # Open the mask to prune away edges
+        thresh_mask = opening(thresh_mask, selem_duo)
+        # Dilate to fill the space
+        thresh_mask = dilation(thresh_mask, selem_solo)
+        # Use connected component analysis to isolate heart
+        labels = label(thresh_mask)
+        labels_vect = np.reshape(labels, [1, labels.shape[0]*labels.shape[1]])
+        labels_count = np.zeros([1, labels_vect.max()])
+        for n in np.arange(0, labels_vect.max()):
+            labels_count[0, n] = np.sum(labels == n+1)
+            label_ind = np.argmax(labels_count)
+            thresh_mask = labels == label_ind+1
+        # Apply mask to data
+        frame_out[0][thresh_mask] = 0
+        # Assign ouput variable
+        mask = thresh_mask
     else:
-        raise NotImplementedError('Mask type "{}" not implemented'.format(mask_type))
+        raise NotImplementedError(
+            'Mask type "{}" not implemented'.format(mask_type))
 
     return frame_out, mask, markers
 

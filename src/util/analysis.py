@@ -529,8 +529,6 @@ def ensemble_xlsx_print(file_name, signal_time, ind_analyze, data_oap, act_ind,
         Nothing. Check directory for new *.xlsx file.
     """
     # Create a workbook and add a worksheet
-    # now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    # workbook = xlsxwriter.Workbook('EnsembleAPD_' + now + '.xlsx')
     workbook = xlsxwriter.Workbook(file_name)
     bold = workbook.add_format({'bold': True})
     worksheet = workbook.add_worksheet('APD_Data')
@@ -603,6 +601,36 @@ def ensemble_xlsx_print(file_name, signal_time, ind_analyze, data_oap, act_ind,
         worksheet.write(std_row, 8, np.std(
             signal_time[act_ind[idx][1:]] -
             signal_time[act_ind[idx][:-1]]).item())
+    # Set the column widths
+    worksheet.set_column(0, 8, 15)
+    # Close the excel file
+    workbook.close()
+
+
+def signal_data_xlsx_print(file_name, signal_time, ind_analyze, data_oap):
+    # Create a workbook and add a worksheet
+    workbook = xlsxwriter.Workbook(file_name)
+    bold = workbook.add_format({'bold': True})
+    worksheet = workbook.add_worksheet('Signal_Data')
+    for idx, coor in enumerate(ind_analyze):
+        # Write Row Labels
+        worksheet.write(1, 0, 'Row', bold)
+        worksheet.write(2, 0, 'Column', bold)
+        worksheet.write(3, 0, 'Data', bold)
+        # Write Column Labels
+        worksheet.write(0, 1, 'Signal 1', bold)
+        worksheet.write(0, 2, 'Signal 2', bold)
+        worksheet.write(0, 3, 'Signal 3', bold)
+        worksheet.write(0, 4, 'Signal 4', bold)
+        # Write out the results as a spreadsheet
+        # for n in np.arange(0, len(ind_analyze)):
+        for n in np.arange(0, 1):
+            # Write row
+            worksheet.write(1, n+1, ind_analyze[n][1])
+            # Write column
+            worksheet.write(2, n+1, ind_analyze[n][0])
+            # Write data
+            worksheet.write(3, n+1, data_oap[n])
     # Set the column widths
     worksheet.set_column(0, 8, 15)
     # Close the excel file

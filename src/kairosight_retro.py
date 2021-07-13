@@ -10,7 +10,7 @@ from util.processing import (filter_spatial_stack, filter_temporal,
                              filter_drift)
 from util.analysis import (calc_tran_activation, oap_peak_calc, diast_ind_calc,
                            act_ind_calc, apd_ind_calc, tau_calc,
-                           ensemble_xlsx_print)
+                           ensemble_xlsx_print, signal_data_xlsx_print)
 
 from ui.KairoSight_WindowMain_Retro import Ui_MainWindow
 from PyQt5.QtCore import (QObject, pyqtSignal, QRunnable,
@@ -280,7 +280,7 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.normalize_checkbox.setEnabled(False)
         self.prep_button.setEnabled(False)
         # Change the button string
-        self.data_prop_button.setText('Start Preparation')
+        self.data_prop_button.setText('Save Properties')
         # Disable Analysis Tools
         self.analysis_drop.setEnabled(False)
         self.analysis_drop.setCurrentIndex(0)
@@ -309,11 +309,13 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.play_movie_button.setEnabled(False)
         self.export_movie_button.setEnabled(False)
         # self.optical_toggle_button.setEnabled(False)
-        # Disable axes controls
+        # Disable axes controls and export buttons
         self.axes_start_time_label.setEnabled(False)
         self.axes_start_time_edit.setEnabled(False)
         self.axes_end_time_label.setEnabled(False)
         self.axes_end_time_edit.setEnabled(False)
+        self.export_data_button.setEnabled(False)
+        self.export_tracings_button.setEnabled(False)
 
     def refresh_data(self):
         # Grab the applicable file names of the directory and display
@@ -346,7 +348,7 @@ class MainWindow(QWidget, Ui_MainWindow):
             msg.exec_()
 
     def data_properties(self):
-        if self.data_prop_button.text() == 'Start Preparation':
+        if self.data_prop_button.text() == 'Save Properties':
             # Populate global variables with frame rate and scale values
             self.data_fps = float(self.frame_rate_edit.text())
             self.data_scale = float(self.image_scale_edit.text())
@@ -373,7 +375,7 @@ class MainWindow(QWidget, Ui_MainWindow):
                 canvas.draw()
             # Activate Movie and Signal Tools
             self.signal_select_button.setEnabled(True)
-            # Activate Preparation Tools
+            # Activate Processing Tools
             self.rm_bkgd_checkbox.setEnabled(True)
             self.rm_bkgd_method_label.setEnabled(True)
             self.rm_bkgd_method_drop.setEnabled(True)
@@ -477,7 +479,7 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.update_axes()
 
         else:
-            # Disable Preparation Tools
+            # Disable Processing Tools
             self.rm_bkgd_checkbox.setChecked(False)
             self.rm_bkgd_checkbox.setEnabled(False)
             self.rm_bkgd_method_label.setEnabled(False)
@@ -583,7 +585,7 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.crop_ylower_edit.setEnabled(True)
             self.crop_yupper_edit.setEnabled(True)
             # Change the button string
-            self.data_prop_button.setText('Start Preparation')
+            self.data_prop_button.setText('Save Properties')
             # Update the axes
             self.update_analysis_win()
             self.update_axes()
@@ -599,12 +601,6 @@ class MainWindow(QWidget, Ui_MainWindow):
         np.seterr(divide='ignore', invalid='ignore')
         # Grab unprepped data and check data type to flip if necessary
         self.data_filt = self.data_prop
-        '''if self.image_type_drop.currentIndex() == 0:
-            # Membrane potential, flip the data
-            self.data_filt = self.data.astype(float)*-1
-        else:
-            # Calcium transient, don't flip the data
-            self.data_filt = self.data.astype(float)'''
 
         # Remove background
         if self.rm_bkgd_checkbox.isChecked():
@@ -710,25 +706,16 @@ class MainWindow(QWidget, Ui_MainWindow):
                         # Check for the leading edge case
                         if data_min_ind[n, m]-2 < 0:
                             data_seg = self.data_filt[0:6, n, m]
-                            '''data_min[n, m] = np.mean(
-                                self.data_filt[0:6, n, m])'''
                         # Check for the trailing edge case
                         elif data_min_ind[n, m]+2 > last_ind:
                             data_seg = self.data_filt[
                                 last_ind-4:last_ind+1, n, m]
-                            '''data_min[n, m] = np.mean(
-                                self.data_filt[last_ind-4:last_ind+1, n, m])'''
                         # Run assuming all indices are within time indices
                         else:
                             data_seg = self.data_filt[
                                 data_min_ind[n, m]-2:data_min_ind[n, m]+2,
                                 n,
                                 m]
-                        '''data_min[n, m] = np.mean(
-                                self.data_filt[
-                                    data_min_ind[n, m]-2:
-                                        data_min_ind[n, m]+2,
-                                        n, m])'''
                         # Grab all values less than the maximum of this segment
                         seg_bool = self.data_filt[:, n, m] < max(data_seg)
                         # Create a vector of the index values of the signal
@@ -759,10 +746,6 @@ class MainWindow(QWidget, Ui_MainWindow):
                         test_min_all = np.delete(
                             test_min_all,
                             [i for i, x in enumerate(np.isnan(test_min_all)) if x])
-                        '''test_min_all[x] = np.min(
-                        self.data_filt[ind[ind_sep[x]:ind_sep[x+1]+1],
-                                                   n,
-                                                   m])'''
                         # Calculate the average minimum
                         if test_min_all.size == 0:
                             continue
@@ -772,12 +755,6 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.data_filt = self.data_filt - data_min
             # Normalize using the maximum value of the signal
             self.data_filt = self.data_filt/np.amax(self.data_filt, axis=0)
-            '''# Find max amplitude of each signal
-            data_diff = np.amax(self.data_filt, axis=0) - data_min
-            # Baseline the data
-            self.data_filt = self.data_filt-data_min
-            # Normalize via broadcasting
-            self.data_filt = self.data_filt/data_diff'''
             # Set normalization flag
             self.norm_flag = 1
             normalize_timeend = time.process_time()
@@ -1049,6 +1026,28 @@ class MainWindow(QWidget, Ui_MainWindow):
                                 apd_input_01, apd_val_01, apd_input_02,
                                 apd_val_02, apd_val_tri, d_f0, f1_f0,
                                 self.image_type_drop.currentIndex())
+
+    def export_data_numeric(self):
+        # Identify which signals have been selected for calculation
+        ensemble_list = [self.ensemble_cb_01.isChecked(),
+                         self.ensemble_cb_02.isChecked(),
+                         self.ensemble_cb_03.isChecked(),
+                         self.ensemble_cb_04.isChecked()]
+        ind_analyze = self.signal_coord[ensemble_list, :]
+        # Grab oaps
+        data_oap = []
+        for idx in np.arange(len(ind_analyze)):
+            data_oap.append(
+                self.data_filt[:, ind_analyze[idx][1], ind_analyze[idx][0]])
+        # Open dialogue box for selecting the data directory
+        save_fname = QFileDialog.getSaveFileName(
+            self, "Save File", os.getcwd(), "Excel Files (*.xlsx)")
+        # Write results to a spreadsheet
+        signal_data_xlsx_print(save_fname[0], self.signal_time, ind_analyze,
+                               data_oap)
+
+    def export_data_tracing(self):
+        pass
 
     def signal_select(self):
         # Create placeholders for the x and y coordinates
@@ -1457,9 +1456,6 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Get the current value of the movie slider
             sig_id = self.movie_scroll_obj.value()
             # Create the transparency mask
-            '''if self.image_type_drop.currentIndex() == 0:
-                mask = ~self.mask
-            else:'''
             mask = self.mask
             thresh = self.data_filt[sig_id, :, :] > 0.3
             transp = mask == thresh
@@ -1468,6 +1464,10 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.mpl_canvas.axes.imshow(self.data_filt[sig_id, :, :],
                                         alpha=transp, vmin=0, vmax=1,
                                         cmap='jet')
+        # Check to see if signals have been selected and activate export tools
+        if self.signal_ind != 1:
+            self.export_data_button.setEnabled(True)
+            self.export_tracings_button.setEnabled(True)
         # Plot the select signal points
         for cnt, ind in enumerate(self.signal_coord):
             if self.signal_toggle[cnt] == 0:
@@ -1477,7 +1477,7 @@ class MainWindow(QWidget, Ui_MainWindow):
                     ind[0], ind[1], color=self.cnames[cnt])
         # Check to see if crop is being utilized
         if self.crop_cb.isChecked():
-            if self.data_prop_button.text() == 'Start Preparation':
+            if self.data_prop_button.text() == 'Save Properties':
                 # Plot vertical sides of bounding box
                 self.mpl_canvas.axes.plot(
                     [self.crop_xbound[0], self.crop_xbound[0]],
