@@ -135,6 +135,7 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.map_pushbutton.clicked.connect(self.map_analysis)
         self.axes_start_time_edit.editingFinished.connect(self.update_win)
         self.axes_end_time_edit.editingFinished.connect(self.update_win)
+        self.export_data_button.clicked.connect(self.export_data_numeric)
         self.start_time_edit.editingFinished.connect(self.update_analysis_win)
         self.end_time_edit.editingFinished.connect(self.update_analysis_win)
         self.max_val_edit.editingFinished.connect(self.update_analysis_win)
@@ -1028,23 +1029,24 @@ class MainWindow(QWidget, Ui_MainWindow):
                                 self.image_type_drop.currentIndex())
 
     def export_data_numeric(self):
-        # Identify which signals have been selected for calculation
-        ensemble_list = [self.ensemble_cb_01.isChecked(),
-                         self.ensemble_cb_02.isChecked(),
-                         self.ensemble_cb_03.isChecked(),
-                         self.ensemble_cb_04.isChecked()]
-        ind_analyze = self.signal_coord[ensemble_list, :]
+        # Determine if data is prepped or unprepped
+        if self.preparation_tracker == 0:
+            data = self.data_prop
+        else:
+            data = self.data_filt
         # Grab oaps
         data_oap = []
-        for idx in np.arange(len(ind_analyze)):
-            data_oap.append(
-                self.data_filt[:, ind_analyze[idx][1], ind_analyze[idx][0]])
+        for idx in np.arange(0, 4):
+            if self.signal_toggle[idx] == 1:
+                data_oap.append(
+                    data[:, self.signal_coord[idx, 1],
+                         self.signal_coord[idx, 0]])
         # Open dialogue box for selecting the data directory
         save_fname = QFileDialog.getSaveFileName(
             self, "Save File", os.getcwd(), "Excel Files (*.xlsx)")
         # Write results to a spreadsheet
-        signal_data_xlsx_print(save_fname[0], self.signal_time, ind_analyze,
-                               data_oap)
+        signal_data_xlsx_print(save_fname[0], self.signal_time, data_oap,
+                               self.signal_coord, self.data_fps)
 
     def export_data_tracing(self):
         pass

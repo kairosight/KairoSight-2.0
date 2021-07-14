@@ -607,32 +607,47 @@ def ensemble_xlsx_print(file_name, signal_time, ind_analyze, data_oap, act_ind,
     workbook.close()
 
 
-def signal_data_xlsx_print(file_name, signal_time, ind_analyze, data_oap):
+def signal_data_xlsx_print(file_name, signal_time, data_oap, signal_coord,
+                           sample_rate):
     # Create a workbook and add a worksheet
     workbook = xlsxwriter.Workbook(file_name)
     bold = workbook.add_format({'bold': True})
     worksheet = workbook.add_worksheet('Signal_Data')
-    for idx, coor in enumerate(ind_analyze):
-        # Write Row Labels
-        worksheet.write(1, 0, 'Row', bold)
-        worksheet.write(2, 0, 'Column', bold)
-        worksheet.write(3, 0, 'Data', bold)
-        # Write Column Labels
-        worksheet.write(0, 1, 'Signal 1', bold)
-        worksheet.write(0, 2, 'Signal 2', bold)
-        worksheet.write(0, 3, 'Signal 3', bold)
-        worksheet.write(0, 4, 'Signal 4', bold)
-        # Write out the results as a spreadsheet
-        # for n in np.arange(0, len(ind_analyze)):
-        for n in np.arange(0, 1):
-            # Write row
-            worksheet.write(1, n+1, ind_analyze[n][1])
-            # Write column
-            worksheet.write(2, n+1, ind_analyze[n][0])
+    # Write Row Labels
+    worksheet.write(1, 0, 'Row', bold)
+    worksheet.write(2, 0, 'Column', bold)
+    worksheet.write(3, 0, 'Data', bold)
+    # Header format
+    header_format = workbook.add_format()
+    header_format.set_align('center')
+    header_format.set_bold()
+    # Write out the data to the spreadsheet
+    for col in np.arange(0, len(data_oap)):
+        # Write header
+        worksheet.write(0, col+1, f'Signal {col+1}', header_format)
+        # Write the row and column data
+        worksheet.write(1, col+1, signal_coord[col, 1])
+        worksheet.write(2, col+1, signal_coord[col, 0])
+        # Write out the optical data values
+        for idx, data in enumerate(data_oap[col]):
             # Write data
-            worksheet.write(3, n+1, data_oap[n])
+            worksheet.write(idx+3, col+1, data)
+    # Time cell format
+    time_format = workbook.add_format()
+    time_format.set_align('right')
+    time_format.set_bold()
+    # Write out the time data
+    worksheet.write(0, len(data_oap)+1, 'Time', header_format)
+    worksheet.write(1, len(data_oap)+2, 'Frames Per Second', time_format)
+    worksheet.write(1, len(data_oap)+1, sample_rate)
+    worksheet.write(2, len(data_oap)+2, 'Vector Length', time_format)
+    worksheet.write(2, len(data_oap)+1, len(signal_time))
+    worksheet.write(3, len(data_oap)+2, 'Time Vector', time_format)
+    for idx, time_data in enumerate(signal_time):
+        worksheet.write(idx+3, len(data_oap)+1, time_data)
     # Set the column widths
-    worksheet.set_column(0, 8, 15)
+    worksheet.set_column(0, len(data_oap)+1, 10)
+    worksheet.set_column(len(data_oap)+2, len(data_oap)+2, 20)
     # Close the excel file
     workbook.close()
 
