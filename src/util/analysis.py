@@ -618,16 +618,16 @@ def signal_data_xlsx_print(file_name, signal_time, data_oap, signal_coord,
     header_format.set_align('center')
     header_format.set_bold()
     # Time cell format
-    time_format = workbook.add_format()
-    time_format.set_align('right')
-    time_format.set_bold()
+    data_format = workbook.add_format()
+    data_format.set_align('right')
+    data_format.set_bold()
     # Write out the time data
     worksheet.write(0, 1, 'Time', header_format)
-    worksheet.write(1, 0, 'Frames Per Second', time_format)
+    worksheet.write(1, 0, 'Frames Per Second', bold)
     worksheet.write(1, 1, sample_rate)
-    worksheet.write(2, 0, 'Vector Length', time_format)
+    worksheet.write(2, 0, 'Vector Length', bold)
     worksheet.write(2, 1, len(signal_time))
-    worksheet.write(3, 0, 'Time Vector', time_format)
+    worksheet.write(3, 0, 'Time Vector', bold)
     for idx, time_data in enumerate(signal_time):
         worksheet.write(idx+3, 1, time_data)
     # Write out the data to the spreadsheet
@@ -642,9 +642,9 @@ def signal_data_xlsx_print(file_name, signal_time, data_oap, signal_coord,
             # Write data
             worksheet.write(idx+3, col+2, data)
         # Write Row Labels
-    worksheet.write(1, len(data_oap)+2, 'Row', bold)
-    worksheet.write(2, len(data_oap)+2, 'Column', bold)
-    worksheet.write(3, len(data_oap)+2, 'Data', bold)
+    worksheet.write(1, len(data_oap)+2, 'Row', data_format)
+    worksheet.write(2, len(data_oap)+2, 'Column', data_format)
+    worksheet.write(3, len(data_oap)+2, 'Data', data_format)
     '''# Write out the time data
     worksheet.write(0, len(data_oap)+1, 'Time', header_format)
     worksheet.write(1, len(data_oap)+2, 'Frames Per Second', time_format)
