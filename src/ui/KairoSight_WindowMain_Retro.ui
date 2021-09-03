@@ -349,7 +349,7 @@
           <bool>false</bool>
          </property>
          <property name="text">
-          <string>Start Preparation</string>
+          <string>Save Properties</string>
          </property>
         </widget>
        </item>
@@ -433,16 +433,6 @@
        </property>
       </widget>
      </item>
-     <item>
-      <widget class="QPushButton" name="optical_toggle_button">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="text">
-        <string>Optical Off</string>
-       </property>
-      </widget>
-     </item>
     </layout>
    </widget>
    <widget class="QWidget" name="verticalLayoutWidget_5">
@@ -484,7 +474,7 @@
         </font>
        </property>
        <property name="text">
-        <string>Preparation:</string>
+        <string>Processing:</string>
        </property>
       </widget>
      </item>
@@ -1502,6 +1492,22 @@
       </layout>
      </item>
     </layout>
+   </widget>
+   <widget class="QPushButton" name="export_data_button">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>1000</x>
+      <y>665</y>
+      <width>105</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Export Signal Data</string>
+    </property>
    </widget>
   </widget>
  </widget>

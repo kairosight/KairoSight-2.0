@@ -283,7 +283,6 @@ def mask_generate(frame_in, mask_type='Otsu_global', strict=(3, 5)):
         raise TypeError('Frame must be a 2-D ndarray (Y, X)')'''
     if frame_in.dtype not in [np.uint16, float]:
         raise TypeError('Frame values must either be "np.uint16" or "float"')
-    if type(mask_type) is not str:
         raise TypeError('Filter type must be a "str"')
     if type(strict) is not tuple:
         raise TypeError('Strictness type must be an "tuple"')
