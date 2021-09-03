@@ -645,15 +645,6 @@ def signal_data_xlsx_print(file_name, signal_time, data_oap, signal_coord,
     worksheet.write(1, len(data_oap)+2, 'Row', data_format)
     worksheet.write(2, len(data_oap)+2, 'Column', data_format)
     worksheet.write(3, len(data_oap)+2, 'Data', data_format)
-    '''# Write out the time data
-    worksheet.write(0, len(data_oap)+1, 'Time', header_format)
-    worksheet.write(1, len(data_oap)+2, 'Frames Per Second', time_format)
-    worksheet.write(1, len(data_oap)+1, sample_rate)
-    worksheet.write(2, len(data_oap)+2, 'Vector Length', time_format)
-    worksheet.write(2, len(data_oap)+1, len(signal_time))
-    worksheet.write(3, len(data_oap)+2, 'Time Vector', time_format)
-    for idx, time_data in enumerate(signal_time):
-        worksheet.write(idx+3, len(data_oap)+1, time_data)'''
     # Set the column widths
     worksheet.set_column(1, len(data_oap)+2, 10)
     worksheet.set_column(0, 0, 20)

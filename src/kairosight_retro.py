@@ -210,6 +210,10 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.signal_coord = np.zeros((4, 2)).astype(int)
         self.signal_toggle = np.zeros((4, 1))
         self.norm_flag = 0
+        # Reset poly select variables
+        self.poly_coord = np.zeros((1, 2)).astype(int)
+        self.poly_toggle = False
+        self.poly_start = False
         # Update the movie window tools with the appropriate values
         self.movie_scroll_obj.setMaximum(self.data.shape[0])
         self.play_bool = 0
@@ -309,14 +313,12 @@ class MainWindow(QWidget, Ui_MainWindow):
         self.movie_scroll_obj.setEnabled(False)
         self.play_movie_button.setEnabled(False)
         self.export_movie_button.setEnabled(False)
-        # self.optical_toggle_button.setEnabled(False)
         # Disable axes controls and export buttons
         self.axes_start_time_label.setEnabled(False)
         self.axes_start_time_edit.setEnabled(False)
         self.axes_end_time_label.setEnabled(False)
         self.axes_end_time_edit.setEnabled(False)
         self.export_data_button.setEnabled(False)
-        self.export_tracings_button.setEnabled(False)
 
     def refresh_data(self):
         # Grab the applicable file names of the directory and display
@@ -531,7 +533,6 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.movie_scroll_obj.setEnabled(False)
             self.play_movie_button.setEnabled(False)
             self.export_movie_button.setEnabled(False)
-            # self.optical_toggle_button.setEnabled(False)
             # Disable axes controls
             self.axes_start_time_label.setEnabled(False)
             self.axes_start_time_edit.setEnabled(False)
@@ -625,7 +626,6 @@ class MainWindow(QWidget, Ui_MainWindow):
             is_sat = sum(
                 self.data_filt[0:50, :, :] == self.data_filt[0, :, :]) == 50
             # Remove saturated signals from the mask
-            print(self.mask)
             self.mask[is_sat] = False
             # Apply the mask for background removal
             self.data_filt = mask_apply(self.data_filt,
@@ -664,7 +664,6 @@ class MainWindow(QWidget, Ui_MainWindow):
         if self.filter_checkbox.isChecked():
             filter_timestart = time.process_time()
             # Apply the low pass filter
-            # print(self.filter_upper_edit.text)
             self.data_filt = filter_temporal(
                 self.data_filt, self.data_fps, self.mask, filter_order=100,
                 freq_cutoff=float(self.filter_upper_edit.text()))
@@ -773,7 +772,6 @@ class MainWindow(QWidget, Ui_MainWindow):
             self.movie_scroll_obj.setEnabled(True)
             self.play_movie_button.setEnabled(True)
             self.export_movie_button.setEnabled(True)
-            # self.optical_toggle_button.setEnabled(True)
 
     def analysis_select(self):
         if self.analysis_drop.currentIndex() == 0:
@@ -852,9 +850,6 @@ class MainWindow(QWidget, Ui_MainWindow):
         end_ind = abs(self.signal_time-end_time)
         end_ind = np.argmin(end_ind)
         # Grab masking information
-        '''if self.image_type_drop.currentIndex() == 0:
-            transp = ~self.mask
-        else:'''
         transp = self.mask
         # Calculate activation
         self.act_ind = calc_tran_activation(
@@ -866,10 +861,6 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Generate a map of the activation times
             self.act_map = plt.figure()
             axes_act_map = self.act_map.add_axes([0.05, 0.1, 0.8, 0.8])
-            '''if self.image_type_drop.currentIndex() == 0:
-                transp = ~self.mask
-            else:
-                transp = self.mask'''
             transp = transp.astype(float)
             axes_act_map.imshow(self.data[0,
                                           self.crop_ybound[0]:
@@ -924,7 +915,6 @@ class MainWindow(QWidget, Ui_MainWindow):
             # Generate a map of the action potential durations
             self.apd_map = plt.figure()
             axes_apd_map = self.apd_map.add_axes([0.05, 0.1, 0.8, 0.8])
-            '''transp = ~self.mask'''
             transp = transp.astype(float)
             top = self.signal_time[max_apd_ind]-self.signal_time[start_ind]
             axes_apd_map.imshow(self.data[0,
@@ -1048,13 +1038,7 @@ class MainWindow(QWidget, Ui_MainWindow):
         signal_data_xlsx_print(save_fname[0], self.signal_time, data_oap,
                                self.signal_coord, self.data_fps)
 
-    def export_data_tracing(self):
-        pass
-
     def signal_select(self):
-        # Create placeholders for the x and y coordinates
-        self.x = []
-        self.y = []
         # Create a button press event
         self.cid = self.mpl_canvas.mpl_connect(
             'button_press_event', self.on_click)
@@ -1233,8 +1217,6 @@ class MainWindow(QWidget, Ui_MainWindow):
 
     # Export movie of ovelayed optical data
     def export_movie(self):
-        '''# Set the scroll bar index back to the beginning
-        self.movie_scroll_obj.setValue(0)'''
         # Open dialogue box for selecting the file name
         save_fname = QFileDialog.getSaveFileName(
             self, "Save File", os.getcwd(), "mp4 Files (*.mp4)")
@@ -1417,6 +1399,29 @@ class MainWindow(QWidget, Ui_MainWindow):
         # End the button press event
         self.mpl_canvas.mpl_disconnect(self.cid)
 
+    # Function for grabbing the x and y coordinates of button clicks for an
+    # add remove polygon
+    def poly_click(self, event):
+        print(f'Starting coordinates: {self.poly_coord}')
+        # while self.poly_coord.shape[0] < 5:
+        # Grab the axis coordinates of the click event
+        if self.poly_start:
+            # Add new button click to the array
+            self.poly_coord = np.vstack(
+                (self.poly_coord,
+                 [[round(event.xdata), round(event.ydata)]]))
+        else:
+            # Create a new button click array
+            self.poly_coord = np.array(
+                [round(event.xdata), round(event.ydata)])
+            # Set poly_start to True
+            self.poly_start = True
+        print(f'Final coordinates: {self.poly_coord}')
+        # End the button press event
+        self.mpl_canvas.mpl_disconnect(self.pid)
+        # End holding pattern
+        self.poly_running = False
+
     # Function for entering out-of-range values for signal window view
     def sig_win_warn(self, ind):
         # Create a message box to communicate the absence of data
@@ -1469,7 +1474,6 @@ class MainWindow(QWidget, Ui_MainWindow):
         # Check to see if signals have been selected and activate export tools
         if self.signal_ind != 1:
             self.export_data_button.setEnabled(True)
-            self.export_tracings_button.setEnabled(True)
         # Plot the select signal points
         for cnt, ind in enumerate(self.signal_coord):
             if self.signal_toggle[cnt] == 0:
@@ -1477,6 +1481,13 @@ class MainWindow(QWidget, Ui_MainWindow):
             else:
                 self.mpl_canvas.axes.scatter(
                     ind[0], ind[1], color=self.cnames[cnt])
+        # Check to see if polygon plotting is turned on
+        if self.poly_toggle:
+            self.mpl_canvas.axes.plot(self.poly_coord[:, 0],
+                                      self.poly_coord[:, 1], color='#0000ff')
+            # Add the polygon to the canvas
+            # self.mpl_canvas.axes.add_artist(roi)
+            # self.mpl_canvas.draw()
         # Check to see if crop is being utilized
         if self.crop_cb.isChecked():
             if self.data_prop_button.text() == 'Save Properties':
