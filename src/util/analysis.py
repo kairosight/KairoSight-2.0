@@ -7,7 +7,7 @@ from scipy.signal import savgol_filter
 from scipy.misc import derivative
 from scipy.interpolate import UnivariateSpline
 from datetime import datetime
-from PyQt5.QtWidgets import QFileDialog
+from PyQt5.QtWidgets import QFileDialog, QMessageBox
 
 # Constants
 # Transient feature limits (ms)
@@ -318,6 +318,25 @@ def oap_peak_calc(signal_in, start_ind, end_ind, amp_thresh, fps):
     rm = np.delete(rm, 0)
     # Remove all other indices from the peaks indices array
     peak_ind = np.delete(peak_ind, rm)
+    # Grab the average cycle length
+    aveCL = np.average(peak_ind[1:]-peak_ind[:-1])
+    # Grab a percentage of the average cycle length
+    perCL = aveCL*0.5
+    # Use percentage of cycle length create search window for max dV2dt
+    start_ind_act = np.around(peak_ind-perCL, decimals=0).astype(int)
+    # if first peak is too close to time=0, remove it to avoid boundary errors
+    if start_ind_act[0] < 0:
+        # Remove the peak
+        peak_ind = peak_ind[1:]
+        # Remove the negative index of the first peak
+        start_ind_act = start_ind_act[1:]
+        # Present a warning that the first peak was removed
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Warning)
+        msg.setText("The first peak was removed to avoid a boundary error!")
+        msg.setWindowTitle("Warning")
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.exec_()
     # Output the indices of the peaks
     return peak_ind.astype(int)
 

@@ -603,7 +603,6 @@ class MainWindow(QWidget, Ui_MainWindow):
         np.seterr(divide='ignore', invalid='ignore')
         # Grab unprepped data and check data type to flip if necessary
         self.data_filt = self.data_prop
-
         # Remove background
         if self.rm_bkgd_checkbox.isChecked():
             rm_bkgd_timestart = time.process_time()
@@ -630,7 +629,8 @@ class MainWindow(QWidget, Ui_MainWindow):
                     self.data_filt[0], rm_method, (rm_dark, rm_light))
             # Flip if the signal is voltage
             if self.image_type_drop.currentIndex() == 0:
-                self.mask = ~self.mask
+                if rm_method != 'Bkgd_thresh':
+                    self.mask = ~self.mask
             # Look for saturated signals by comparing the first 50 indices to
             # the first index, if they are all equal the signal is saturated
             is_sat = sum(
