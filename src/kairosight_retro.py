@@ -10,7 +10,8 @@ from util.processing import (filter_spatial_stack, filter_temporal,
                              filter_drift)
 from util.analysis import (calc_tran_activation, oap_peak_calc, diast_ind_calc,
                            act_ind_calc, apd_ind_calc, tau_calc,
-                           ensemble_xlsx_print, signal_data_xlsx_print)
+                           ensemble_xlsx_print, signal_data_xlsx_print,
+                           calc_snr)
 
 from ui.KairoSight_WindowMain_Retro import Ui_MainWindow
 from PyQt5.QtCore import (QObject, pyqtSignal, QRunnable,
@@ -838,6 +839,25 @@ class MainWindow(QWidget, Ui_MainWindow):
                     checkboxname = 'ensemble_cb_0{}'.format(cnt+1)
                     checkbox = getattr(self, checkboxname)
                     checkbox.setEnabled(True)
+        elif self.analysis_drop.currentIndex() == 3:
+            # Disable the APD tools
+            self.max_apd_label.setEnabled(False)
+            self.max_apd_edit.setEnabled(False)
+            self.max_apd_edit.setText('')
+            self.max_val_label.setEnabled(False)
+            self.max_val_edit.setEnabled(False)
+            self.max_val_edit.setText('')
+            self.perc_apd_label_01.setEnabled(False)
+            self.perc_apd_edit_01.setEnabled(False)
+            self.perc_apd_label_02.setEnabled(False)
+            self.perc_apd_edit_02.setEnabled(False)
+            self.perc_apd_edit_01.setText('')
+            self.perc_apd_edit_02.setText('')
+            self.analysis_y_lim = False
+            self.ensemble_cb_01.setEnabled(False)
+            self.ensemble_cb_02.setEnabled(False)
+            self.ensemble_cb_03.setEnabled(False)
+            self.ensemble_cb_04.setEnabled(False)
         # Update the axes accordingly
         self.update_axes()
 
@@ -861,13 +881,18 @@ class MainWindow(QWidget, Ui_MainWindow):
         end_ind = np.argmin(end_ind)
         # Grab masking information
         transp = self.mask
-        # Calculate activation
+        '''# Calculate activation
         self.act_ind = calc_tran_activation(
             self.data_filt, start_ind, end_ind)
         self.act_val = self.act_ind*(1/self.data_fps)
-        max_val = (end_ind-start_ind)*(1/self.data_fps)
+        max_val = (end_ind-start_ind)*(1/self.data_fps)'''
         # Generate activation map
         if analysis_type == 0:
+            # Calculate activation
+            self.act_ind = calc_tran_activation(
+                self.data_filt, start_ind, end_ind)
+            self.act_val = self.act_ind*(1/self.data_fps)
+            max_val = (end_ind-start_ind)*(1/self.data_fps)
             # Generate a map of the activation times
             self.act_map = plt.figure()
             axes_act_map = self.act_map.add_axes([0.05, 0.1, 0.8, 0.8])
@@ -888,6 +913,11 @@ class MainWindow(QWidget, Ui_MainWindow):
                 cax=cax, format='%.3f')
         # Generate action potential duration (APD) map
         if analysis_type == 1:
+            # Calculate activation
+            self.act_ind = calc_tran_activation(
+                self.data_filt, start_ind, end_ind)
+            self.act_val = self.act_ind*(1/self.data_fps)
+            max_val = (end_ind-start_ind)*(1/self.data_fps)
             # Grab the maximum APD value
             final_apd = float(self.max_apd_edit.text())
             # Find the associated time index
@@ -1027,6 +1057,30 @@ class MainWindow(QWidget, Ui_MainWindow):
                                 apd_input_01, apd_val_01, apd_input_02,
                                 apd_val_02, apd_val_tri, d_f0, f1_f0,
                                 self.image_type_drop.currentIndex())
+        # Calculate and visualize SNR
+        if analysis_type == 3:
+            # Calculate SNR
+            self.snr = calc_snr(self.data_filt, start_ind, end_ind)
+            # Grab the maximum SNR value
+            max_val = np.nanmax(self.snr)
+            # Generate a map of SNR
+            self.snr_map = plt.figure()
+            axes_snr_map = self.snr_map.add_axes([0.05, 0.1, 0.8, 0.8])
+            transp = transp.astype(float)
+            axes_snr_map.imshow(self.data[0,
+                                          self.crop_ybound[0]:
+                                              self.crop_ybound[1]+1,
+                                          self.crop_xbound[0]:
+                                              self.crop_xbound[1]+1],
+                                cmap='gray')
+            axes_snr_map.imshow(self.snr, alpha=transp, vmin=0,
+                                vmax=max_val, cmap='jet')
+            cax = plt.axes([0.87, 0.12, 0.05, 0.76])
+            self.snr_map.colorbar(
+                cm.ScalarMappable(
+                    colors.Normalize(0, max_val),
+                    cmap='jet'),
+                cax=cax)
 
     def export_data_numeric(self):
         # Determine if data is prepped or unprepped
