@@ -933,6 +933,11 @@
            <string>APD Ensemble</string>
           </property>
          </item>
+         <item>
+          <property name="text">
+           <string>SNR</string>
+          </property>
+         </item>
         </widget>
        </item>
       </layout>

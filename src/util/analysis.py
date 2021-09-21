@@ -142,6 +142,48 @@ def find_tran_end(signal_in):
     return i_end
 
 
+def calc_snr(signal_in, start_ind, end_ind):
+    """Calculate the signal to noise ratio using the maximum value of a
+    selected window and the minimum value of the baseline region. This
+    requires that the user select a region that starts just before the upstroke
+    and ends just before the subsequent upstroke.
+
+        Parameters
+        ----------
+        signal_in : ndarray
+            The array of data to be evaluated, dtype : uint16 or float
+        start_time: np.float
+            The user defined start time index for analysis of activation times
+        end_time: np.float
+            The user defined end time index for analysis of activation times
+
+        Returns
+        -------
+        snr : np.array
+            The snr ratio of each pixel in the signal
+    """
+    # Grab the number of indices in the window
+    num_ind = end_ind-start_ind+1
+    # Grab 10% of the window indices
+    perc_win = int(round(num_ind*0.1))
+    # Grab the maximum value for each signal
+    signal_max_val = signal_in[start_ind:end_ind, :, :].max(axis=0)
+    # Grab the minimum value of the signal
+    signal_min_val = signal_in[start_ind:end_ind, :, :].min(axis=0)
+    # Calculate the signal amplitude
+    sig_amp = signal_max_val-signal_min_val
+    # Grab the maximum value of the distal 10% of the window
+    noise_max_val = signal_in[end_ind-perc_win:end_ind, :, :].max(axis=0)
+    # Grab the minimum value of the distal 10% of the window
+    noise_min_val = signal_in[end_ind-perc_win:end_ind, :, :].min(axis=0)
+    # Calculate the noise amplitude
+    noise_amp = noise_max_val-noise_min_val
+    # Calculate SNR
+    snr = np.divide(sig_amp, noise_amp)
+    # Output SNR
+    return snr
+
+
 def calc_tran_activation(signal_in, start_time, end_time):
     """Calculate the time of the activation of a transient,
     defined as the midpoint (not limited by sampling rate) between the start
